@@ -28,11 +28,11 @@ class OKXWebSocket:
         self.on_orderbook_callback: Optional[Callable] = None
         
     def _format_symbol(self, symbol: str) -> str:
-        """Convert BTCUSDT to BTC-USDT format"""
+        """Convert BTCUSDT to BTC-USDT-SWAP format (Futures)"""
         # Simple conversion for common pairs
         if symbol.endswith("USDT"):
             base = symbol[:-4]
-            return f"{base}-USDT"
+            return f"{base}-USDT-SWAP"
         return symbol
     
     def _unformat_symbol(self, symbol: str) -> str:
@@ -94,7 +94,12 @@ class OKXWebSocket:
             
             # Handle subscription confirmation
             if data.get("event") == "subscribe":
-                logger.debug(f"OKX subscription confirmed: {data.get('arg')}")
+                logger.info(f"OKX subscription confirmed: {data.get('arg')}")
+                return
+            
+            # Handle subscription errors
+            if data.get("event") == "error":
+                logger.error(f"OKX subscription error: {data}")
                 return
             
             # Handle data messages

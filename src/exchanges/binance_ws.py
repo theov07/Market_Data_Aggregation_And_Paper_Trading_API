@@ -35,14 +35,14 @@ class BinanceWebSocket:
         self.on_orderbook_callback = callback
     
     def _build_stream_url(self) -> str:
-        """Build WebSocket URL for multiple streams"""
+        """Build WebSocket URL for multiple streams (Futures)"""
         streams = []
         for symbol in self.symbols:
             streams.append(f"{symbol}@trade")
             streams.append(f"{symbol}@bookTicker")
         
         stream_names = "/".join(streams)
-        return f"wss://stream.binance.com:9443/stream?streams={stream_names}"
+        return f"wss://fstream.binance.com/stream?streams={stream_names}"
     
     def _parse_trade(self, data: dict) -> Trade:
         """Parse Binance trade message"""
