@@ -1,0 +1,337 @@
+<mxfile host="65bd71144e">
+    <diagram name="Market Data Management" id="market-data">
+        <mxGraphModel dx="213" dy="125" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" background="none" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="Market Data Management" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontColor=light-dark(#FFFFFF,#FFFFFF);fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="800" y="20" width="200" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="exchange-lane" value="Exchange WebSocket Connections" style="swimlane;html=1;startSize=30;horizontal=1;containerType=tree;strokeColor=light-dark(#FFFFFF,#FFFFFF);fillColor=none;fontColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;dashed=1;dashPattern=1 1;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="80" width="1720" height="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="binance-connect" value="connect to&#xa;Binance Futures&#xa;wss://fstream..." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#FFC107;fontColor=#FFC107;strokeWidth=2;" parent="exchange-lane" vertex="1">
+                    <mxGeometry x="40" y="70" width="140" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="binance-subscribe" value="subscribe streams&#xa;depth@100ms&#xa;trade&#xa;kline_1s/1m" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#FFC107;fontColor=#FFC107;strokeWidth=2;" parent="exchange-lane" vertex="1">
+                    <mxGeometry x="220" y="70" width="140" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="binance-receive" value="receive messages&#xa;BTC/ETH/SOL&#xa;USDT pairs" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#FFC107;fontColor=#FFC107;strokeWidth=2;" parent="exchange-lane" vertex="1">
+                    <mxGeometry x="400" y="70" width="140" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="okx-connect" value="connect to&#xa;OKX WebSocket&#xa;wss://ws.okx.com..." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#2196F3;fontColor=#2196F3;strokeWidth=2;" parent="exchange-lane" vertex="1">
+                    <mxGeometry x="600" y="70" width="140" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="okx-subscribe" value="subscribe channels&#xa;books-l2-tbt&#xa;trades&#xa;candle1s/1m" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#2196F3;fontColor=#2196F3;strokeWidth=2;" parent="exchange-lane" vertex="1">
+                    <mxGeometry x="780" y="70" width="140" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="okx-receive" value="receive messages&#xa;BTC/ETH/SOL&#xa;-USDT-SWAP" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#2196F3;fontColor=#2196F3;strokeWidth=2;" parent="exchange-lane" vertex="1">
+                    <mxGeometry x="960" y="70" width="140" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="exchange-parse" value="parse JSON&#xa;normalize format&#xa;validate schema" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="exchange-lane" vertex="1">
+                    <mxGeometry x="1140" y="70" width="140" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="exchange-queue" value="add to&#xa;processing queue" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#4CAF50;fontColor=#4CAF50;strokeWidth=2;" parent="exchange-lane" vertex="1">
+                    <mxGeometry x="1320" y="70" width="140" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="exchange-reconnect" value="on disconnect:&#xa;exponential backoff&#xa;auto-reconnect" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#FF5252;fontColor=#FF5252;strokeWidth=2;" parent="exchange-lane" vertex="1">
+                    <mxGeometry x="1520" y="70" width="160" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="binance-arrow-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="exchange-lane" source="binance-connect" target="binance-subscribe" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="binance-arrow-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="exchange-lane" source="binance-subscribe" target="binance-receive" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="okx-arrow-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="exchange-lane" source="okx-connect" target="okx-subscribe" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="okx-arrow-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="exchange-lane" source="okx-subscribe" target="okx-receive" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="merge-arrow-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="exchange-lane" source="binance-receive" target="exchange-parse" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="540" y="50"/>
+                            <mxPoint x="1210" y="50"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="merge-arrow-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="exchange-lane" source="okx-receive" target="exchange-parse" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1120" y="100"/>
+                            <mxPoint x="1120" y="100"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="parse-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="exchange-lane" source="exchange-parse" target="exchange-queue" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="processing-lane" value="Data Processing &amp; Computation" style="swimlane;html=1;startSize=30;horizontal=1;containerType=tree;strokeColor=light-dark(#FFFFFF,#FFFFFF);fillColor=none;fontColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;dashed=1;dashPattern=1 1;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="330" width="1520" height="220" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-queue" value="Processing&#xa;Queue" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#4CAF50;fontColor=#4CAF50;strokeWidth=2;size=20;" parent="processing-lane" vertex="1">
+                    <mxGeometry x="100" y="80" width="120" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-decision" value="data&#xa;type?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="processing-lane" vertex="1">
+                    <mxGeometry x="260" y="80" width="80" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-orderbook" value="order book&#xa;update&#xa;best bid/ask" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="processing-lane" vertex="1">
+                    <mxGeometry x="380" y="60" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-best-touch" value="compute&#xa;best_touch&#xa;{bid, ask, spread}" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#9C27B0;fontColor=#9C27B0;strokeWidth=2;" parent="processing-lane" vertex="1">
+                    <mxGeometry x="540" y="60" width="140" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-trades" value="trade event&#xa;price, qty, side&#xa;timestamp" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="processing-lane" vertex="1">
+                    <mxGeometry x="380" y="140" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-format-trades" value="format trades&#xa;normalize schema" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#00BCD4;fontColor=#00BCD4;strokeWidth=2;" parent="processing-lane" vertex="1">
+                    <mxGeometry x="540" y="140" width="140" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-klines" value="kline event&#xa;OHLCV data&#xa;intervals: 1s/10s/1m/5m" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="processing-lane" vertex="1">
+                    <mxGeometry x="720" y="60" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-format-klines" value="format klines&#xa;aggregate data" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#FF9800;fontColor=#FF9800;strokeWidth=2;" parent="processing-lane" vertex="1">
+                    <mxGeometry x="920" y="60" width="140" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-ewma" value="compute EWMA&#xa;α = 0.05&#xa;exponential avg" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#E91E63;fontColor=#E91E63;strokeWidth=2;" parent="processing-lane" vertex="1">
+                    <mxGeometry x="920" y="140" width="140" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-store" value="update&#xa;internal state&#xa;(dict cache)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="processing-lane" vertex="1">
+                    <mxGeometry x="1100" y="90" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-broadcast-queue" value="add to&#xa;broadcast queue" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#4CAF50;fontColor=#4CAF50;strokeWidth=2;" parent="processing-lane" vertex="1">
+                    <mxGeometry x="1260" y="90" width="140" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-arrow-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="processing-lane" source="proc-queue" target="proc-decision" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-arrow-2" value="&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;depth&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;fontColor=light-dark(#FFFFFF,#FFFFFF);" parent="processing-lane" source="proc-decision" target="proc-orderbook" edge="1">
+                    <mxGeometry x="0.0159" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="proc-arrow-3" value="&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;trade&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;fontColor=light-dark(#FFFFFF,#000000);" parent="processing-lane" source="proc-decision" target="proc-trades" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="proc-arrow-4" value="kline" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;fontColor=light-dark(#FFFFFF,#FFFFFF);" parent="processing-lane" source="proc-decision" target="proc-klines" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="240" y="120"/>
+                            <mxPoint x="240" y="40"/>
+                            <mxPoint x="740" y="40"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="proc-arrow-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9C27B0;strokeWidth=2;" parent="processing-lane" source="proc-orderbook" target="proc-best-touch" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-arrow-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00BCD4;strokeWidth=2;" parent="processing-lane" source="proc-trades" target="proc-format-trades" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-arrow-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#FF9800;strokeWidth=2;" parent="processing-lane" source="proc-klines" target="proc-format-klines" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-arrow-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#E91E63;strokeWidth=2;" parent="processing-lane" source="proc-format-klines" target="proc-ewma" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-arrow-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="processing-lane" source="proc-best-touch" target="proc-store" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="610" y="130"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="proc-arrow-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="processing-lane" source="proc-format-trades" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="890" y="170"/>
+                            <mxPoint x="890" y="140"/>
+                        </Array>
+                        <mxPoint x="1100" y="140" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="proc-arrow-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="processing-lane" source="proc-ewma" target="proc-store" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="proc-arrow-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4CAF50;strokeWidth=2;" parent="processing-lane" source="proc-store" target="proc-broadcast-queue" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-lane" value="&lt;font style=&quot;color: light-dark(rgb(255, 255, 255), rgb(255, 255, 255));&quot;&gt;Client WebSocket Subscription&lt;/font&gt;" style="swimlane;html=1;startSize=30;horizontal=1;containerType=tree;strokeColor=light-dark(#FFFFFF,#FFFFFF);fillColor=none;fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;dashed=1;dashPattern=1 1;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="600" width="1520" height="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-connect" value="client connects&#xa;WS /ws" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="client-lane" vertex="1">
+                    <mxGeometry x="40" y="60" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-subscribe-msg" value="send subscribe&#xa;message JSON&#xa;with filters" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="client-lane" vertex="1">
+                    <mxGeometry x="200" y="60" width="130" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-parse-sub" value="parse subscription&#xa;extract filters" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="client-lane" vertex="1">
+                    <mxGeometry x="370" y="60" width="130" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-validate" value="validate filters&#xa;exchange, type,&#xa;interval, symbol" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="client-lane" vertex="1">
+                    <mxGeometry x="540" y="60" width="140" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-decision-valid" value="valid?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="client-lane" vertex="1">
+                    <mxGeometry x="720" y="50" width="80" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-store-sub" value="store subscription&#xa;in client registry&#xa;(ClientSubscription)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#4CAF50;fontColor=#4CAF50;strokeWidth=2;" parent="client-lane" vertex="1">
+                    <mxGeometry x="840" y="60" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-confirm" value="send confirmation&#xa;to client&#xa;{status: &#39;subscribed&#39;}" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#4CAF50;fontColor=#4CAF50;strokeWidth=2;" parent="client-lane" vertex="1">
+                    <mxGeometry x="1040" y="60" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-error" value="send error&#xa;invalid filters" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#FF5252;fontColor=#FF5252;strokeWidth=2;" parent="client-lane" vertex="1">
+                    <mxGeometry x="700" y="150" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-disconnect" value="on disconnect:&#xa;remove from registry&#xa;cleanup resources" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#FF5252;fontColor=#FF5252;strokeWidth=2;" parent="client-lane" vertex="1">
+                    <mxGeometry x="1240" y="60" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-arrow-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="client-lane" source="client-connect" target="client-subscribe-msg" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-arrow-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="client-lane" source="client-subscribe-msg" target="client-parse-sub" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-arrow-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="client-lane" source="client-parse-sub" target="client-validate" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-arrow-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="client-lane" source="client-validate" target="client-decision-valid" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-arrow-5" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4CAF50;strokeWidth=2;fontColor=#4CAF50;" parent="client-lane" source="client-decision-valid" target="client-store-sub" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-arrow-6" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#FF5252;strokeWidth=2;fontColor=#FF5252;" parent="client-lane" source="client-decision-valid" target="client-error" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="client-arrow-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4CAF50;strokeWidth=2;" parent="client-lane" source="client-store-sub" target="client-confirm" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-lane" value="Broadcasting to Clients" style="swimlane;html=1;startSize=30;horizontal=1;containerType=tree;strokeColor=light-dark(#FFFFFF,#FFFFFF);fillColor=none;fontColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;dashed=1;dashPattern=1 1;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="870" width="1520" height="250" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-queue" value="Broadcast&#xa;Queue" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#4CAF50;fontColor=#4CAF50;strokeWidth=2;size=20;" parent="broadcast-lane" vertex="1">
+                    <mxGeometry x="40" y="80" width="120" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-get-data" value="get data item&#xa;from queue" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="broadcast-lane" vertex="1">
+                    <mxGeometry x="200" y="90" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-get-clients" value="get all active&#xa;client connections" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="broadcast-lane" vertex="1">
+                    <mxGeometry x="360" y="90" width="140" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-loop" value="for each&#xa;client" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;size=15;" parent="broadcast-lane" vertex="1">
+                    <mxGeometry x="540" y="90" width="100" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-filter" value="match filters&#xa;exchange, type,&#xa;symbol, interval" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="broadcast-lane" vertex="1">
+                    <mxGeometry x="680" y="90" width="140" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-decision-match" value="match?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="broadcast-lane" vertex="1">
+                    <mxGeometry x="860" y="80" width="80" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-format" value="format message&#xa;JSON serialize" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="broadcast-lane" vertex="1">
+                    <mxGeometry x="980" y="90" width="130" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-send" value="send via&#xa;WebSocket" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#4CAF50;fontColor=#4CAF50;strokeWidth=2;" parent="broadcast-lane" vertex="1">
+                    <mxGeometry x="1150" y="90" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-error" value="on error:&#xa;remove client&#xa;log failure" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#FF5252;fontColor=#FF5252;strokeWidth=2;" parent="broadcast-lane" vertex="1">
+                    <mxGeometry x="1150" y="160" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-skip" value="skip client" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#757575;fontColor=#757575;strokeWidth=2;" parent="broadcast-lane" vertex="1">
+                    <mxGeometry x="840" y="170" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-continue" value="next iteration" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#000000);strokeWidth=2;" parent="broadcast-lane" vertex="1">
+                    <mxGeometry x="1310" y="90" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-arrow-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="broadcast-lane" source="broadcast-queue" target="broadcast-get-data" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-arrow-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="broadcast-lane" source="broadcast-get-data" target="broadcast-get-clients" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-arrow-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="broadcast-lane" source="broadcast-get-clients" target="broadcast-loop" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-arrow-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="broadcast-lane" source="broadcast-loop" target="broadcast-filter" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-arrow-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="broadcast-lane" source="broadcast-filter" target="broadcast-decision-match" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-arrow-6" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4CAF50;strokeWidth=2;fontColor=#4CAF50;" parent="broadcast-lane" source="broadcast-decision-match" target="broadcast-format" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-arrow-7" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=2;fontColor=#757575;" parent="broadcast-lane" source="broadcast-decision-match" target="broadcast-skip" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-arrow-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4CAF50;strokeWidth=2;" parent="broadcast-lane" source="broadcast-format" target="broadcast-send" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-arrow-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="broadcast-lane" source="broadcast-send" target="broadcast-continue" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="broadcast-arrow-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#757575;strokeWidth=2;" parent="broadcast-lane" source="broadcast-skip" target="broadcast-continue" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="900" y="220"/>
+                            <mxPoint x="1370" y="220"/>
+                            <mxPoint x="1370" y="120"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="broadcast-arrow-loop" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;dashed=1;dashPattern=4 4;" parent="broadcast-lane" source="broadcast-continue" target="broadcast-loop" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1460" y="100"/>
+                            <mxPoint x="1460" y="60"/>
+                            <mxPoint x="590" y="60"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="legend-box" value="Legend" style="swimlane;html=1;startSize=30;horizontal=1;containerType=tree;strokeColor=light-dark(#FFFFFF,#FFFFFF);fillColor=none;fontColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="1170" width="800" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-binance" value="Binance" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#FFC107;fontColor=#FFC107;strokeWidth=2;" parent="legend-box" vertex="1">
+                    <mxGeometry x="20" y="40" width="100" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-okx" value="OKX" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#2196F3;fontColor=#2196F3;strokeWidth=2;" parent="legend-box" vertex="1">
+                    <mxGeometry x="20" y="90" width="100" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-best-touch" value="Best Touch" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#9C27B0;fontColor=#9C27B0;strokeWidth=2;" parent="legend-box" vertex="1">
+                    <mxGeometry x="140" y="40" width="100" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-trades" value="Trades" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#00BCD4;fontColor=#00BCD4;strokeWidth=2;" parent="legend-box" vertex="1">
+                    <mxGeometry x="140" y="90" width="100" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-klines" value="Klines" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#FF9800;fontColor=#FF9800;strokeWidth=2;" parent="legend-box" vertex="1">
+                    <mxGeometry x="260" y="40" width="100" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-ewma" value="EWMA" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#E91E63;fontColor=#E91E63;strokeWidth=2;" parent="legend-box" vertex="1">
+                    <mxGeometry x="260" y="90" width="100" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-success" value="Success Path" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#4CAF50;fontColor=#4CAF50;strokeWidth=2;" parent="legend-box" vertex="1">
+                    <mxGeometry x="380" y="40" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-error" value="Error" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#FF5252;fontColor=#FF5252;strokeWidth=2;" parent="legend-box" vertex="1">
+                    <mxGeometry x="380" y="90" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-queue" value="Queue" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#4CAF50;fontColor=#4CAF50;strokeWidth=2;size=10;" parent="legend-box" vertex="1">
+                    <mxGeometry x="520" y="40" width="100" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-decision" value="Decision" style="rhombus;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="legend-box" vertex="1">
+                    <mxGeometry x="540" y="85" width="60" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-process" value="Process" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=light-dark(#FFFFFF,#FFFFFF);fontColor=light-dark(#FFFFFF,#FFFFFF);strokeWidth=2;" parent="legend-box" vertex="1">
+                    <mxGeometry x="640" y="40" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-skip" value="Skip/Ignore" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#757575;fontColor=#757575;strokeWidth=2;" parent="legend-box" vertex="1">
+                    <mxGeometry x="640" y="90" width="120" height="40" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

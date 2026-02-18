@@ -8,7 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.services.websocket_manager import WebSocketManager
 from src.api.services.market_data_service import MarketDataService
-from src.api.routes import info, websocket, ws_docs
+from src.api.services.auth_service import AuthService
+from src.api.routes import info, websocket, ws_docs, auth
+from src.api import dependencies
 
 # Configure logging
 logging.basicConfig(
@@ -20,6 +22,7 @@ logging.basicConfig(
 # Global instances
 websocket_manager = WebSocketManager()
 market_data_service = MarketDataService(websocket_manager)
+auth_service = AuthService()
 
 
 @asynccontextmanager
@@ -35,6 +38,16 @@ async def lifespan(app: FastAPI):
 async def _startup():
     """Start market data service on application startup"""
     print("🚀 Starting Market Data Aggregation API...")
+    
+    # Initialize authentication database
+    await auth_service.init_db()
+    print("✅ Authentication database initialized")
+    
+    # Set auth service for routes and dependencies
+    auth.auth_service = auth_service
+    dependencies.set_auth_service(auth_service)
+    
+    # Start market data service
     await market_data_service.start()
     print("✅ Market data service started")
     print(f"📊 Monitoring symbols: {', '.join(market_data_service.get_available_symbols())}")
@@ -77,6 +90,7 @@ def _add_middleware(app: FastAPI):
 
 def _include_routers(app: FastAPI):
     """Include API routers"""
+    app.include_router(auth.router)  # Auth routes with /auth prefix
     app.include_router(info.router, tags=["Info"])
     app.include_router(ws_docs.router, tags=["WebSocket"])
     app.include_router(websocket.router, tags=["WebSocket"])
@@ -118,6 +132,10 @@ def _add_root_endpoint(app: FastAPI):
             "version": "1.0.0",
             "description": "Real-time cryptocurrency market data aggregation from multiple exchanges",
             "endpoints": {
+                "register": "/auth/register",
+                "login": "/auth/login",
+                "register": "/auth/register",
+                "login": "/auth/login",
                 "info": "/info",
                 "websocket": "/ws",
                 "docs": "/docs",
