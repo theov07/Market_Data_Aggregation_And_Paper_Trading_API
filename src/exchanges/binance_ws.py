@@ -10,6 +10,7 @@ from typing import Callable, List, Optional
 import websockets
 
 from src.data.models import Trade, OrderBookLevel
+from config import BINANCE_WS_BASE, MARKET_TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -35,14 +36,19 @@ class BinanceWebSocket:
         self.on_orderbook_callback = callback
     
     def _build_stream_url(self) -> str:
-        """Build WebSocket URL for multiple streams (Futures)"""
+        """Build WebSocket URL for multiple streams"""
         streams = []
         for symbol in self.symbols:
             streams.append(f"{symbol}@trade")
             streams.append(f"{symbol}@bookTicker")
         
         stream_names = "/".join(streams)
-        return f"wss://fstream.binance.com/stream?streams={stream_names}"
+        
+        # Futures use /stream endpoint, Spot uses /ws
+        if MARKET_TYPE == "futures":
+            return f"{BINANCE_WS_BASE}/stream?streams={stream_names}"
+        else:
+            return f"{BINANCE_WS_BASE}/{stream_names}"
     
     def _parse_trade(self, data: dict) -> Trade:
         """Parse Binance trade message"""

@@ -10,6 +10,7 @@ from typing import Callable, List, Optional
 import websockets
 
 from src.data.models import Trade, OrderBookLevel
+from config import OKX_WS_BASE, MARKET_TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +29,14 @@ class OKXWebSocket:
         self.on_orderbook_callback: Optional[Callable] = None
         
     def _format_symbol(self, symbol: str) -> str:
-        """Convert BTCUSDT to BTC-USDT-SWAP format (Futures)"""
+        """Convert BTCUSDT to OKX format (BTC-USDT-SWAP for futures, BTC-USDT for spot)"""
         # Simple conversion for common pairs
         if symbol.endswith("USDT"):
             base = symbol[:-4]
-            return f"{base}-USDT-SWAP"
+            if MARKET_TYPE == "futures":
+                return f"{base}-USDT-SWAP"
+            else:
+                return f"{base}-USDT"
         return symbol
     
     def _unformat_symbol(self, symbol: str) -> str:
@@ -144,7 +148,7 @@ class OKXWebSocket:
                         
         except Exception as e:
             logger.error(f"Error handling OKX message: {e}")
-    
+    OKX_WS_BASE
     async def connect(self):
         """Connect to OKX WebSocket and start listening"""
         url = "wss://ws.okx.com:8443/ws/v5/public"
