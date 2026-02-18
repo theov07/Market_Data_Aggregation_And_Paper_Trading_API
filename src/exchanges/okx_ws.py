@@ -3,12 +3,15 @@ OKX WebSocket client for order book and trade data
 """
 import asyncio
 import json
+import logging
 import ssl
 from datetime import datetime
 from typing import Callable, List, Optional
 import websockets
 
 from src.data.models import Trade, OrderBookLevel
+
+logger = logging.getLogger(__name__)
 
 
 class OKXWebSocket:
@@ -91,7 +94,7 @@ class OKXWebSocket:
             
             # Handle subscription confirmation
             if data.get("event") == "subscribe":
-                print(f"OKX subscription confirmed: {data.get('arg')}")
+                logger.debug(f"OKX subscription confirmed: {data.get('arg')}")
                 return
             
             # Handle data messages
@@ -135,14 +138,14 @@ class OKXWebSocket:
                         await self.on_orderbook_callback(symbol, best_bid, best_ask)
                         
         except Exception as e:
-            print(f"Error handling OKX message: {e}")
+            logger.error(f"Error handling OKX message: {e}")
     
     async def connect(self):
         """Connect to OKX WebSocket and start listening"""
         url = "wss://ws.okx.com:8443/ws/v5/public"
         self.running = True
         
-        print(f"Connecting to OKX: {url}")
+        logger.info("Connecting to OKX...")
         
         # Disable SSL verification
         ssl_context = ssl.create_default_context()
@@ -153,12 +156,12 @@ class OKXWebSocket:
             try:
                 async with websockets.connect(url, ssl=ssl_context) as ws:
                     self.ws = ws
-                    print("Connected to OKX")
+                    logger.info("Connected to OKX")
                     
                     # Send subscription message
                     sub_msg = self._build_subscription_message()
                     await ws.send(json.dumps(sub_msg))
-                    print(f"Sent OKX subscription: {sub_msg}")
+                    logger.debug(f"Sent OKX subscription")
                     
                     async for message in ws:
                         if not self.running:
@@ -166,9 +169,9 @@ class OKXWebSocket:
                         await self._handle_message(message)
                         
             except Exception as e:
-                print(f"OKX connection error: {e}")
+                logger.error(f"OKX connection error: {e}")
                 if self.running:
-                    print("Reconnecting in 5 seconds...")
+                    logger.info("Reconnecting in 5 seconds...")
                     await asyncio.sleep(5)
     
     async def disconnect(self):

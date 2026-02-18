@@ -3,12 +3,15 @@ Binance WebSocket client for order book and trade data
 """
 import asyncio
 import json
+import logging
 import ssl
 from datetime import datetime
 from typing import Callable, List, Optional
 import websockets
 
 from src.data.models import Trade, OrderBookLevel
+
+logger = logging.getLogger(__name__)
 
 
 class BinanceWebSocket:
@@ -91,14 +94,14 @@ class BinanceWebSocket:
                     await self.on_orderbook_callback(symbol, best_bid, best_ask)
                     
         except Exception as e:
-            print(f"Error handling Binance message: {e}")
+            logger.error(f"Error handling Binance message: {e}")
     
     async def connect(self):
         """Connect to Binance WebSocket and start listening"""
         url = self._build_stream_url()
         self.running = True
         
-        print(f"Connecting to Binance: {url}")
+        logger.info("Connecting to Binance...")
         
         # Disable SSL verification
         ssl_context = ssl.create_default_context()
@@ -109,7 +112,7 @@ class BinanceWebSocket:
             try:
                 async with websockets.connect(url, ssl=ssl_context) as ws:
                     self.ws = ws
-                    print("Connected to Binance")
+                    logger.info("Connected to Binance")
                     
                     async for message in ws:
                         if not self.running:
@@ -117,9 +120,9 @@ class BinanceWebSocket:
                         await self._handle_message(message)
                         
             except Exception as e:
-                print(f"Binance connection error: {e}")
+                logger.error(f"Binance connection error: {e}")
                 if self.running:
-                    print("Reconnecting in 5 seconds...")
+                    logger.info("Reconnecting in 5 seconds...")
                     await asyncio.sleep(5)
     
     async def disconnect(self):

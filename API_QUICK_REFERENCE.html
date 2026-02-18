@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Data API - Quick Reference</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .section {
+            background: white;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { margin: 0 0 10px 0; }
+        h2 { color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+        h3 { color: #764ba2; margin-top: 20px; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .endpoint {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        .method {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .get { background: #61affe; color: white; }
+        .ws { background: #49cc90; color: white; }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            margin: 2px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        .quick-links {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .quick-links a {
+            background: white;
+            color: #667eea;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .quick-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 Market Data Aggregation API</h1>
+        <p>Real-time cryptocurrency market data from Binance & OKX</p>
+        <div class="quick-links">
+            <a href="http://localhost:8000/docs" target="_blank">📖 Swagger UI</a>
+            <a href="http://localhost:8000/info" target="_blank">ℹ️  API Info</a>
+            <a href="http://localhost:8000/ws-docs" target="_blank">🔌 WebSocket Docs</a>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>📋 Endpoints REST</h2>
+        
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <strong>/</strong>
+            <p>Point d'entrée de l'API - Informations générales et liste des endpoints disponibles</p>
+            <strong>Exemple de réponse :</strong>
+            <pre>{
+  "message": "Market Data Aggregation API",
+  "version": "1.0.0",
+  "description": "Real-time cryptocurrency market data aggregation",
+  "endpoints": {
+    "info": "/info",
+    "websocket": "/ws",
+    "docs": "/docs",
+    "openapi": "/openapi.json"
+  },
+  "websocket_data_types": ["best_touch", "trade", "kline", "ewma"],
+  "status": "operational"
+}</pre>
+        </div>
+
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <strong>/info</strong>
+            <p>Récupérer les assets, paires de trading, exchanges et intervals disponibles</p>
+            <strong>Exemple de réponse :</strong>
+            <pre>{
+  "assets": ["ADA", "BNB", "BTC", "ETH", "SOL", "USDT"],
+  "trading_pairs": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "ADAUSDT"],
+  "exchanges": ["binance", "okx"],
+  "kline_intervals": ["1s", "10s", "1m", "5m"]
+}</pre>
+        </div>
+
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <strong>/ws-docs</strong>
+            <p>Documentation complète de l'API WebSocket avec exemples de messages</p>
+        </div>
+
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <strong>/docs</strong>
+            <p>Interface Swagger UI interactive pour tester l'API</p>
+        </div>
+
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <strong>/openapi.json</strong>
+            <p>Schéma OpenAPI complet au format JSON</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🔌 WebSocket API</h2>
+        
+        <div class="endpoint">
+            <span class="method ws">WS</span>
+            <strong>/ws</strong>
+            <p>Endpoint WebSocket pour streaming de données en temps réel</p>
+        </div>
+
+        <h3>📡 Format de Subscription</h3>
+        <pre>{
+  "action": "subscribe",        // ou "unsubscribe"
+  "data_type": "best_touch",    // best_touch | trade | kline | ewma
+  "symbol": "BTCUSDT",          // Paire de trading
+  "exchange": "all",            // all | binance | okx
+  "interval": "1m"              // Requis pour kline: 1s | 10s | 1m | 5m
+}</pre>
+
+        <h3>📊 Types de Données</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Exchange Filter</th>
+                    <th>Interval</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>best_touch</code></td>
+                    <td>Best bid/ask cross-exchange avec détection d'arbitrage</td>
+                    <td>✅ Oui</td>
+                    <td>❌ Non</td>
+                </tr>
+                <tr>
+                    <td><code>trade</code></td>
+                    <td>Trades individuels des exchanges</td>
+                    <td>✅ Oui</td>
+                    <td>❌ Non</td>
+                </tr>
+                <tr>
+                    <td><code>kline</code></td>
+                    <td>Chandelles OHLCV agrégées</td>
+                    <td>✅ Oui</td>
+                    <td>✅ Requis</td>
+                </tr>
+                <tr>
+                    <td><code>ewma</code></td>
+                    <td>Moyenne mobile exponentielle pondérée</td>
+                    <td>✅ Oui</td>
+                    <td>❌ Non</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>📥 Exemples de Messages Reçus</h3>
+        
+        <h4>Best Touch (Arbitrage Detection)</h4>
+        <pre>{
+  "type": "best_touch",
+  "data": {
+    "symbol": "BTCUSDT",
+    "bid_price": 68090.0,
+    "bid_exchange": "binance",
+    "ask_price": 68087.6,
+    "ask_exchange": "okx",
+    "spread": -2.4,              // ⚡ Arbitrage: spread négatif!
+    "timestamp": 1708272000.123
+  },
+  "timestamp": 1708272000.123
+}</pre>
+
+        <h4>Trade</h4>
+        <pre>{
+  "type": "trade",
+  "data": {
+    "symbol": "ETHUSDT",
+    "exchange": "binance",
+    "price": 2014.67,
+    "quantity": 0.5,
+    "timestamp": 1708272000.123
+  },
+  "timestamp": 1708272000.123
+}</pre>
+
+        <h4>Kline (Chandelier)</h4>
+        <pre>{
+  "type": "kline",
+  "data": {
+    "symbol": "SOLUSDT",
+    "exchange": "binance",
+    "interval": "1m",
+    "open": 100.5,
+    "high": 101.2,
+    "low": 100.3,
+    "close": 100.8,
+    "volume": 1234.56,
+    "open_time": 1708272000.0,
+    "close_time": 1708272060.0
+  },
+  "timestamp": 1708272060.123
+}</pre>
+
+        <h4>EWMA</h4>
+        <pre>{
+  "type": "ewma",
+  "data": {
+    "symbol": "BNBUSDT",
+    "exchange": "okx",
+    "value": 305.67,
+    "timestamp": 1708272000.123
+  },
+  "timestamp": 1708272000.123
+}</pre>
+    </div>
+
+    <div class="section">
+        <h2>💡 Exemples d'Utilisation</h2>
+        
+        <h3>JavaScript/Browser</h3>
+        <pre>const ws = new WebSocket('ws://localhost:8000/ws');
+
+ws.onopen = () => {
+  // S'abonner au meilleur bid/ask pour BTCUSDT
+  ws.send(JSON.stringify({
+    action: "subscribe",
+    data_type: "best_touch",
+    symbol: "BTCUSDT",
+    exchange: "all"
+  }));
+  
+  // S'abonner aux klines 1m pour ETHUSDT
+  ws.send(JSON.stringify({
+    action: "subscribe",
+    data_type: "kline",
+    symbol: "ETHUSDT",
+    exchange: "binance",
+    interval: "1m"
+  }));
+};
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  console.log(message.type, message.data);
+  
+  // Détecter arbitrage
+  if (message.type === 'best_touch' && message.data.spread < 0) {
+    console.log('⚡ ARBITRAGE OPPORTUNITY:', message.data);
+  }
+};</pre>
+
+        <h3>Python</h3>
+        <pre>import asyncio
+import json
+import websockets
+
+async def subscribe_to_market_data():
+    uri = "ws://localhost:8000/ws"
+    
+    async with websockets.connect(uri) as websocket:
+        # Subscription
+        await websocket.send(json.dumps({
+            "action": "subscribe",
+            "data_type": "best_touch",
+            "symbol": "BTCUSDT",
+            "exchange": "all"
+        }))
+        
+        # Recevoir les messages
+        async for message in websocket:
+            data = json.loads(message)
+            print(f"{data['type']}: {data['data']}")
+
+asyncio.run(subscribe_to_market_data())</pre>
+
+        <h3>cURL (REST)</h3>
+        <pre># Obtenir les informations de l'API
+curl http://localhost:8000/info
+
+# Obtenir la documentation WebSocket
+curl http://localhost:8000/ws-docs</pre>
+    </div>
+
+    <div class="section">
+        <h2>📊 Données Disponibles</h2>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Trading Pair</th>
+                    <th>Exchanges</th>
+                    <th>Intervals Kline</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge success">BTCUSDT</span></td>
+                    <td rowspan="5">
+                        <span class="badge info">Binance</span>
+                        <span class="badge info">OKX</span>
+                    </td>
+                    <td rowspan="5">
+                        <span class="badge warning">1s</span>
+                        <span class="badge warning">10s</span>
+                        <span class="badge warning">1m</span>
+                        <span class="badge warning">5m</span>
+                    </td>
+                </tr>
+                <tr><td><span class="badge success">ETHUSDT</span></td></tr>
+                <tr><td><span class="badge success">SOLUSDT</span></td></tr>
+                <tr><td><span class="badge success">BNBUSDT</span></td></tr>
+                <tr><td><span class="badge success">ADAUSDT</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>⚡ Fonctionnalités Clés</h2>
+        <ul>
+            <li><strong>Détection d'arbitrage automatique</strong> : Spread négatif = opportunité d'arbitrage cross-exchange</li>
+            <li><strong>Formatage intelligent des prix</strong> : Précision adaptative selon la valeur de l'asset</li>
+            <li><strong>Multi-exchange</strong> : Agrégation de données de Binance et OKX en temps réel</li>
+            <li><strong>Multi-interval</strong> : Klines disponibles en 1s, 10s, 1m et 5m</li>
+            <li><strong>Subscriptions flexibles</strong> : Filtrage par exchange (all/binance/okx)</li>
+            <li><strong>EWMA temps réel</strong> : Moyenne mobile exponentielle avec demi-vie de 30s</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>🔧 Configuration</h2>
+        <p><strong>URL Serveur :</strong> <code>http://localhost:8000</code></p>
+        <p><strong>WebSocket URL :</strong> <code>ws://localhost:8000/ws</code></p>
+        <p><strong>Documentation interactive :</strong> <a href="http://localhost:8000/docs" target="_blank">http://localhost:8000/docs</a></p>
+    </div>
+
+    <footer style="text-align: center; margin-top: 40px; padding: 20px; color: #666;">
+        <p>Market Data Aggregation API v1.0.0 | M2 Dauphine - Cours API</p>
+    </footer>
+</body>
+</html>
