@@ -6,10 +6,9 @@ import aiosqlite
 
 from src.api.models.trading_models import OrderResponse
 from src.processors.best_touch import BestTouchAggregator
+from config import DB_PATH
 
 logger = logging.getLogger(__name__)
-
-DB_PATH = "users.db"
 
 
 class OrderExecutionEngine:

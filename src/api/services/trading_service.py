@@ -12,9 +12,7 @@ from src.api.models.trading_models import (
     Balance, DepositResponse
 )
 from src.api.models.auth_models import User
-from config import SYMBOLS
-
-DB_PATH = "users.db"
+from config import SYMBOLS, DB_PATH
 
 
 class TradingService:

@@ -1,8 +1,6 @@
 """
 Authentication service for user management, password hashing, and JWT tokens
 """
-import os
-import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 import aiosqlite
@@ -10,18 +8,9 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 
 from src.api.models.auth_models import User, UserCreate
+from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, DB_PATH
 
-
-# Security configuration
-SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))  # Generate random secret
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
-
-# Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# Database path
-DB_PATH = "users.db"
 
 
 class AuthService:

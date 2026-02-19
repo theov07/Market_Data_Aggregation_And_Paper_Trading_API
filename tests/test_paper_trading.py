@@ -4,7 +4,7 @@ import json
 import time
 from typing import Dict, Optional
 
-BASE_URL = "http://localhost:8000"
+from config import BASE_URL
 
 def print_section(title: str):
     print(f"\n{'=' * 60}")

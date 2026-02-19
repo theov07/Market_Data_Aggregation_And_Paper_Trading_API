@@ -1,8 +1,10 @@
 import sqlite3
 from tabulate import tabulate
 
+from config import DB_PATH
+
 def view_database():
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     print("\n" + "="*80)

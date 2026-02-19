@@ -1,6 +1,21 @@
 """
 Configuration for the Market Data Aggregation system
 """
+import os
+import secrets
+
+# Database
+DB_PATH = "users.db"
+
+# API Server
+API_HOST = os.getenv("API_HOST", "0.0.0.0")
+API_PORT = int(os.getenv("API_PORT", "8000"))
+BASE_URL = f"http://localhost:{API_PORT}"
+
+# Authentication
+SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 
 # Market type: "futures" or "spot"
 MARKET_TYPE = "futures"

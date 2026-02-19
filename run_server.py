@@ -2,14 +2,14 @@
 Start the FastAPI server
 """
 import uvicorn
+from config import API_HOST, API_PORT
 
 
 def start_server():
-    """Start the FastAPI server with uvicorn"""
     uvicorn.run(
         "src.api.server:app",
-        host="0.0.0.0",
-        port=8000,
+        host=API_HOST,
+        port=API_PORT,
         reload=True,
         log_level="info"
     )
