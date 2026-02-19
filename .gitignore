@@ -23,6 +23,11 @@ Thumbs.db
 # Logs
 *.log
 
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
 # Distribution
 *.egg-info/
 dist/

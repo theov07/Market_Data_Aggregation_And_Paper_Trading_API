@@ -1,6 +1,3 @@
-"""
-FastAPI server for Market Data Aggregation API
-"""
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -9,7 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.api.services.websocket_manager import WebSocketManager
 from src.api.services.market_data_service import MarketDataService
 from src.api.services.auth_service import AuthService
-from src.api.routes import info, websocket, ws_docs, auth
+from src.api.services.trading_service import TradingService
+from src.api.services.order_execution_engine import OrderExecutionEngine
+from src.api.routes import info, websocket, ws_docs, auth, trading
 from src.api import dependencies
 
 # Configure logging
@@ -23,46 +22,56 @@ logging.basicConfig(
 websocket_manager = WebSocketManager()
 market_data_service = MarketDataService(websocket_manager)
 auth_service = AuthService()
+trading_service = TradingService()
+execution_engine = None  # Will be initialized after market_data_service starts
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage application lifecycle"""
-    # Startup
     await _startup()
     yield
-    # Shutdown
     await _shutdown()
 
 
 async def _startup():
-    """Start market data service on application startup"""
-    print("🚀 Starting Market Data Aggregation API...")
+    global execution_engine
     
-    # Initialize authentication database
+    print("Starting Market Data Aggregation API...")
+    
     await auth_service.init_db()
-    print("✅ Authentication database initialized")
+    print("Authentication database initialized")
     
-    # Set auth service for routes and dependencies
+    await trading_service.init_db()
+    print("Trading database initialized")
+    
+    # Set services for routes and dependencies
     auth.auth_service = auth_service
     dependencies.set_auth_service(auth_service)
+    trading.trading_service = trading_service
     
-    # Start market data service
     await market_data_service.start()
-    print("✅ Market data service started")
-    print(f"📊 Monitoring symbols: {', '.join(market_data_service.get_available_symbols())}")
-    print(f"🔄 Exchanges: {', '.join(market_data_service.get_available_exchanges())}")
+    print("Market data service started")
+    print(f"Monitoring symbols: {', '.join(market_data_service.get_available_symbols())}")
+    print(f"Exchanges: {', '.join(market_data_service.get_available_exchanges())}")
+    
+    execution_engine = OrderExecutionEngine(
+        best_touch_aggregator=market_data_service.best_touch_aggregator
+    )
+    await execution_engine.start()
+    print("Order execution engine started")
 
 
 async def _shutdown():
-    """Stop market data service on application shutdown"""
-    print("🛑 Stopping Market Data Aggregation API...")
+    print("Stopping Market Data Aggregation API...")
+    
+    if execution_engine:
+        await execution_engine.stop()
+    
     await market_data_service.stop()
-    print("✅ Market data service stopped")
+    print("Market data service stopped")
 
 
 def create_app() -> FastAPI:
-    """Create and configure FastAPI application"""
     app = FastAPI(
         title="Market Data Aggregation API",
         description="Real-time cryptocurrency market data aggregation from multiple exchanges",
@@ -78,7 +87,6 @@ def create_app() -> FastAPI:
 
 
 def _add_middleware(app: FastAPI):
-    """Add middleware to application"""
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -89,43 +97,15 @@ def _add_middleware(app: FastAPI):
 
 
 def _include_routers(app: FastAPI):
-    """Include API routers"""
-    app.include_router(auth.router)  # Auth routes with /auth prefix
+    app.include_router(auth.router)
+    app.include_router(trading.router)
     app.include_router(info.router, tags=["Info"])
     app.include_router(ws_docs.router, tags=["WebSocket"])
     app.include_router(websocket.router, tags=["WebSocket"])
 
 
 def _add_root_endpoint(app: FastAPI):
-    """Add root endpoint"""
-    @app.get(
-        "/",
-        summary="API Root",
-        description="Root endpoint providing API information and available endpoints",
-        tags=["Root"],
-        responses={
-            200: {
-                "description": "API information",
-                "content": {
-                    "application/json": {
-                        "example": {
-                            "message": "Market Data Aggregation API",
-                            "version": "1.0.0",
-                            "description": "Real-time cryptocurrency market data aggregation",
-                            "endpoints": {
-                                "info": "/info",
-                                "websocket": "/ws",
-                                "docs": "/docs",
-                                "openapi": "/openapi.json"
-                            },
-                            "websocket_data_types": ["best_touch", "trade", "kline", "ewma"],
-                            "status": "operational"
-                        }
-                    }
-                }
-            }
-        }
-    )
+    @app.get("/", tags=["Root"])
     async def root():
         return {
             "message": "Market Data Aggregation API",
@@ -134,9 +114,10 @@ def _add_root_endpoint(app: FastAPI):
             "endpoints": {
                 "register": "/auth/register",
                 "login": "/auth/login",
-                "register": "/auth/register",
-                "login": "/auth/login",
                 "info": "/info",
+                "deposit": "/deposit",
+                "balance": "/balance",
+                "orders": "/orders",
                 "websocket": "/ws",
                 "docs": "/docs",
                 "openapi": "/openapi.json"
@@ -146,5 +127,4 @@ def _add_root_endpoint(app: FastAPI):
         }
 
 
-# Create application instance
 app = create_app()
