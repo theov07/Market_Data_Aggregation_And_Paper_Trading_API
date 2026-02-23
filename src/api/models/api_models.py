@@ -22,6 +22,36 @@ class WebSocketSubscription(BaseModel):
     interval: str | None = Field(None, description="Required for kline subscriptions")
 
 
+class WebSocketOrderSubmit(BaseModel):
+    """WebSocket order submission message"""
+    action: Literal["submit_order"]
+    token_id: str
+    symbol: str
+    side: Literal["buy", "sell"]
+    price: float = Field(..., gt=0)
+    quantity: float = Field(..., gt=0)
+
+
+class WebSocketOrderCancel(BaseModel):
+    """WebSocket order cancellation message"""
+    action: Literal["cancel_order"]
+    token_id: str
+
+
+class WebSocketOrderUpdate(BaseModel):
+    """WebSocket order update message sent to client"""
+    type: Literal["order_update"]
+    order_id: int
+    token_id: str
+    symbol: str
+    side: str
+    price: float
+    quantity: float
+    status: str
+    created_at: str
+    executed_at: str | None = None
+
+
 class WebSocketMessage(BaseModel):
     """Generic WebSocket message sent to client"""
     type: str

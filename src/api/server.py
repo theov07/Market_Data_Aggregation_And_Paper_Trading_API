@@ -55,7 +55,8 @@ async def _startup():
     print(f"Exchanges: {', '.join(market_data_service.get_available_exchanges())}")
     
     execution_engine = OrderExecutionEngine(
-        best_touch_aggregator=market_data_service.best_touch_aggregator
+        best_touch_aggregator=market_data_service.best_touch_aggregator,
+        websocket_manager=websocket_manager
     )
     await execution_engine.start()
     print("Order execution engine started")

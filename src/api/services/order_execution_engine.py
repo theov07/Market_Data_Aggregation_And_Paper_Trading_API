@@ -16,10 +16,12 @@ class OrderExecutionEngine:
     def __init__(
         self, 
         best_touch_aggregator: BestTouchAggregator,
+        websocket_manager=None,  # Optional WebSocketManager
         db_path: str = DB_PATH,
         check_interval: float = 0.5
     ):
         self.best_touch_aggregator = best_touch_aggregator
+        self.websocket_manager = websocket_manager
         self.db_path = db_path
         self.check_interval = check_interval
         
@@ -119,6 +121,7 @@ class OrderExecutionEngine:
                 db=db,
                 order_id=order['id'],
                 user_id=order['user_id'],
+                token_id=order['token_id'],
                 symbol=symbol,
                 side=side,
                 price=order['price'],
@@ -130,7 +133,8 @@ class OrderExecutionEngine:
         self, 
         db: aiosqlite.Connection,
         order_id: int,
-        user_id: int, 
+        user_id: int,
+        token_id: str,
         symbol: str,
         side: str,
         price: float,
@@ -204,6 +208,20 @@ class OrderExecutionEngine:
                 f"Executed order {order_id}: {side.upper()} {quantity} {symbol} "
                 f"@ {execution_price:.2f} (limit: {price:.2f})"
             )
+            
+            # Send WebSocket update to user
+            if self.websocket_manager:
+                order_data = {
+                    "id": order_id,
+                    "token_id": token_id,
+                    "symbol": symbol,
+                    "side": side,
+                    "price": price,
+                    "quantity": quantity,
+                    "status": "filled",
+                    "execution_price": execution_price
+                }
+                await self.websocket_manager.send_order_update(user_id, order_data)
             
         except Exception as e:
             await db.rollback()

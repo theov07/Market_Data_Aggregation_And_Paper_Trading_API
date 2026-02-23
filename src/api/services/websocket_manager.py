@@ -47,19 +47,31 @@ class WebSocketManager:
     
     def __init__(self):
         self._connections: Dict[WebSocket, Set[ClientSubscription]] = {}
+        self._user_connections: Dict[int, WebSocket] = {}  # user_id -> websocket
         self._lock = asyncio.Lock()
     
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, user_id: int | None = None):
         """Accept new WebSocket connection"""
         await websocket.accept()
         async with self._lock:
             self._connections[websocket] = set()
+            if user_id is not None:
+                self._user_connections[user_id] = websocket
     
     async def disconnect(self, websocket: WebSocket):
         """Remove WebSocket connection"""
         async with self._lock:
             if websocket in self._connections:
                 del self._connections[websocket]
+            
+            # Remove from user connections
+            user_id_to_remove = None
+            for user_id, ws in self._user_connections.items():
+                if ws == websocket:
+                    user_id_to_remove = user_id
+                    break
+            if user_id_to_remove:
+                del self._user_connections[user_id_to_remove]
     
     async def add_subscription(self, websocket: WebSocket, subscription: ClientSubscription):
         """Add subscription for a client"""
@@ -130,3 +142,24 @@ class WebSocketManager:
     def get_connection_count(self) -> int:
         """Get number of active connections"""
         return len(self._connections)
+    
+    async def send_order_update(self, user_id: int, order_data: dict):
+        """Send order update to a specific user"""
+        async with self._lock:
+            if user_id not in self._user_connections:
+                return  # User not connected via WebSocket
+            
+            websocket = self._user_connections[user_id]
+            message = {
+                "type": "order_update",
+                "data": order_data,
+                "timestamp": __import__('time').time()
+            }
+            
+            try:
+                await websocket.send_json(message)
+            except Exception:
+                # Connection failed, clean up
+                if websocket in self._connections:
+                    del self._connections[websocket]
+                del self._user_connections[user_id]
