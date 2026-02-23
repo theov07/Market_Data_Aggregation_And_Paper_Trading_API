@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-Comprehensive system test - validates all features
-Tests REST API, WebSocket API, and order execution
-"""
 import asyncio
 import json
 import requests
@@ -15,41 +11,23 @@ BASE_URL = "http://localhost:8000"
 WS_URL = "ws://localhost:8000/ws"
 
 
-class Colors:
-    """ANSI color codes for terminal output"""
-    GREEN = '\033[92m'
-    RED = '\033[91m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    BOLD = '\033[1m'
-    END = '\033[0m'
-
-
 def print_header(text: str):
-    """Print a formatted header"""
-    print(f"\n{Colors.BOLD}{Colors.BLUE}{'='*70}")
-    print(f"  {text}")
-    print(f"{'='*70}{Colors.END}\n")
+    print(f"\n{text}")
 
 
 def print_success(text: str):
-    """Print success message"""
-    print(f"{Colors.GREEN}✓ {text}{Colors.END}")
+    print(f"PASS: {text}")
 
 
 def print_error(text: str):
-    """Print error message"""
-    print(f"{Colors.RED}✗ {text}{Colors.END}")
+    print(f"FAIL: {text}")
 
 
 def print_info(text: str):
-    """Print info message"""
-    print(f"{Colors.YELLOW}→ {text}{Colors.END}")
+    print(f"  {text}")
 
 
 class SystemTester:
-    """Complete system test suite"""
-    
     def __init__(self):
         self.token: Optional[str] = None
         self.username: Optional[str] = None
@@ -57,7 +35,6 @@ class SystemTester:
         self.tests_failed = 0
     
     def test_rest_auth(self) -> bool:
-        """Test REST authentication endpoints"""
         print_header("TEST 1: REST AUTHENTICATION")
         
         try:
@@ -97,7 +74,6 @@ class SystemTester:
             return False
     
     def test_rest_deposit(self) -> bool:
-        """Test deposit endpoint"""
         print_header("TEST 2: REST DEPOSIT")
         
         try:
@@ -140,7 +116,6 @@ class SystemTester:
             return False
     
     def test_rest_balances(self) -> bool:
-        """Test balance retrieval"""
         print_header("TEST 3: REST BALANCES")
         
         try:
@@ -169,7 +144,6 @@ class SystemTester:
             return False
     
     def test_rest_order_create(self) -> bool:
-        """Test REST order creation"""
         print_header("TEST 4: REST ORDER MANAGEMENT")
         
         try:
@@ -234,7 +208,6 @@ class SystemTester:
             return False
     
     async def test_websocket_market_data(self) -> bool:
-        """Test WebSocket market data subscription"""
         print_header("TEST 5: WEBSOCKET MARKET DATA")
         
         try:
@@ -308,7 +281,6 @@ class SystemTester:
             return False
     
     async def test_websocket_order_management(self) -> bool:
-        """Test WebSocket order submission and cancellation"""
         print_header("TEST 6: WEBSOCKET ORDER MANAGEMENT")
         
         try:
@@ -385,7 +357,6 @@ class SystemTester:
             return False
     
     async def test_order_execution(self) -> bool:
-        """Test order execution engine with real-time updates"""
         print_header("TEST 7: ORDER EXECUTION ENGINE")
         
         try:
@@ -458,7 +429,6 @@ class SystemTester:
             return False
     
     async def run_all_tests(self):
-        """Run all system tests"""
         print(f"\n{Colors.BOLD}{Colors.BLUE}")
         print("╔═══════════════════════════════════════════════════════════════════╗")
         print("║         COMPREHENSIVE SYSTEM TEST - FINAL VALIDATION             ║")
@@ -524,7 +494,6 @@ class SystemTester:
 
 
 async def main():
-    """Main test runner"""
     tester = SystemTester()
     await tester.run_all_tests()
 

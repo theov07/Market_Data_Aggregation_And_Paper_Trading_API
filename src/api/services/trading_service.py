@@ -1,7 +1,3 @@
-"""
-Trading service for paper trading system
-Manages deposits, balances, and orders
-"""
 import asyncio
 from datetime import datetime
 from typing import Optional, List
@@ -9,7 +5,7 @@ import aiosqlite
 
 from src.api.models.trading_models import (
     DepositRequest, OrderCreate, OrderResponse, 
-    Balance, DepositResponse
+    Balance, DepositResponse, OrderUpdate
 )
 from src.api.models.auth_models import User
 from config import SYMBOLS, DB_PATH
@@ -17,19 +13,20 @@ from config import SYMBOLS, DB_PATH
 
 class TradingService:
     
-    def __init__(self, db_path: str = DB_PATH):
-        """Initialize trading service with database path and balance locks"""
+    def __init__(self, db_path: str = DB_PATH, best_touch_aggregator=None):
+        """Init"""
         self.db_path = db_path
         self._balance_locks = {}
+        self.best_touch_aggregator = best_touch_aggregator
         
     def _get_balance_lock(self, user_id: int) -> asyncio.Lock:
-        """Get or create a lock for a user's balance to ensure thread safety during updates"""
+        """ get balance lock"""
         if user_id not in self._balance_locks:
             self._balance_locks[user_id] = asyncio.Lock()
         return self._balance_locks[user_id]
     
     async def init_db(self):
-        """Initialize the database tables for balances and orders"""
+        """Init db"""
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS balances (
@@ -52,14 +49,17 @@ class TradingService:
                     token_id TEXT UNIQUE NOT NULL,
                     symbol TEXT NOT NULL,
                     side TEXT NOT NULL,
+                    order_type TEXT NOT NULL DEFAULT 'limit',
                     price REAL NOT NULL,
                     quantity REAL NOT NULL,
+                    filled_quantity REAL DEFAULT 0,
                     status TEXT NOT NULL DEFAULT 'open',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     executed_at TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id),
                     CHECK (side IN ('buy', 'sell')),
-                    CHECK (status IN ('open', 'filled', 'cancelled'))
+                    CHECK (order_type IN ('limit', 'market', 'ioc')),
+                    CHECK (status IN ('open', 'filled', 'cancelled', 'partially_filled'))
                 )
             """)
             
@@ -80,7 +80,7 @@ class TradingService:
             print("✅ Trading database tables initialized")
     
     async def deposit(self, user: User, deposit_req: DepositRequest) -> DepositResponse:
-        """Handle deposit request: validate asset, update balance, and return new balance info"""
+        """Deposit"""
         if not self._is_valid_asset(deposit_req.asset):
             raise ValueError(
                 f"Asset '{deposit_req.asset}' is not available. "
@@ -124,7 +124,7 @@ class TradingService:
                 )
     
     async def get_balance(self, user: User) -> List[Balance]:
-        """Get the current balance for all assets of the user"""
+        """Get balance"""
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute(
@@ -148,12 +148,12 @@ class TradingService:
             return balances
     
     def _is_valid_asset(self, asset: str) -> bool:
-        """Check if the asset is valid based on available symbols"""
+        """is valid asset"""
         available_assets = self._get_available_assets()
         return asset.upper() in available_assets
     
     def _get_available_assets(self) -> List[str]:
-        """Get a list of available assets based on the defined symbols"""
+        """get available assets"""
         assets = set()
         for symbol in SYMBOLS:
             if "USDT" in symbol:
@@ -163,19 +163,41 @@ class TradingService:
         return sorted(list(assets))
     
     async def create_order(self, user: User, order_req: OrderCreate) -> OrderResponse:
-        """Handle order creation: validate input, check balance, reserve funds, and create order record"""
+        """Create order"""
         if order_req.symbol not in SYMBOLS:
             raise ValueError(
                 f"Invalid symbol '{order_req.symbol}'. "
                 f"Available symbols: {', '.join(SYMBOLS)}"
             )
         
+        # For market orders or IOC, get current best touch price
+        execution_price = order_req.price
+        is_immediate = order_req.order_type in ['market', 'ioc']
+        
+        if is_immediate:
+            if not self.best_touch_aggregator:
+                raise ValueError(f"{order_req.order_type.upper()} orders not available: market data service not initialized")
+            
+            best_touch = self.best_touch_aggregator.get_best_touch(order_req.symbol)
+            if not best_touch:
+                raise ValueError(f"Market data not available for {order_req.symbol}")
+            
+            # Buy at best ask, sell at best bid
+            if order_req.side == 'buy':
+                execution_price = best_touch.best_ask_price
+            else:
+                execution_price = best_touch.best_bid_price
+        
+        filled_quantity = order_req.quantity
+        if order_req.order_type == 'ioc':
+            filled_quantity = min(order_req.quantity, 0.5)
+        
         if order_req.side == 'buy':
             required_asset = 'USDT'
-            required_amount = order_req.price * order_req.quantity
+            required_amount = execution_price * filled_quantity  # Use filled_quantity for IOC
         else:
             required_asset = order_req.symbol.replace('USDT', '')
-            required_amount = order_req.quantity
+            required_amount = filled_quantity
         
         async with self._get_balance_lock(user.id):
             async with aiosqlite.connect(self.db_path) as db:
@@ -199,34 +221,125 @@ class TradingService:
                         f"Required: {required_amount:.8f}, Available: {available:.8f}"
                     )
                 
-                await db.execute(
-                    """UPDATE balances 
-                       SET available = available - ?,
-                           reserved = reserved + ?,
-                           updated_at = CURRENT_TIMESTAMP
-                       WHERE user_id = ? AND asset = ?""",
-                    (required_amount, required_amount, user.id, required_asset)
-                )
+                # For market orders and IOC: execute immediately
+                if is_immediate:
+                    # Deduct funds directly (no reservation for immediate orders)
+                    if order_req.side == 'buy':
+                        # Deduct USDT, add base asset
+                        await db.execute(
+                            """UPDATE balances 
+                               SET available = available - ?,
+                                   total = total - ?,
+                                   updated_at = CURRENT_TIMESTAMP
+                               WHERE user_id = ? AND asset = ?""",
+                            (required_amount, required_amount, user.id, 'USDT')
+                        )
+                        
+                        # Add base asset
+                        base_asset = order_req.symbol.replace('USDT', '')
+                        cursor = await db.execute(
+                            "SELECT total FROM balances WHERE user_id = ? AND asset = ?",
+                            (user.id, base_asset)
+                        )
+                        if await cursor.fetchone():
+                            await db.execute(
+                                """UPDATE balances 
+                                   SET total = total + ?,
+                                       available = available + ?,
+                                       updated_at = CURRENT_TIMESTAMP
+                                   WHERE user_id = ? AND asset = ?""",
+                                (filled_quantity, filled_quantity, user.id, base_asset)
+                            )
+                        else:
+                            await db.execute(
+                                """INSERT INTO balances (user_id, asset, total, available, reserved)
+                                   VALUES (?, ?, ?, ?, 0)""",
+                                (user.id, base_asset, filled_quantity, filled_quantity)
+                            )
+                    else:  # sell
+                        # Deduct base asset, add USDT
+                        base_asset = order_req.symbol.replace('USDT', '')
+                        await db.execute(
+                            """UPDATE balances 
+                               SET available = available - ?,
+                                   total = total - ?,
+                                   updated_at = CURRENT_TIMESTAMP
+                               WHERE user_id = ? AND asset = ?""",
+                            (filled_quantity, filled_quantity, user.id, base_asset)
+                        )
+                        
+                        # Add USDT
+                        cursor = await db.execute(
+                            "SELECT total FROM balances WHERE user_id = ? AND asset = ?",
+                            (user.id, 'USDT')
+                        )
+                        if await cursor.fetchone():
+                            await db.execute(
+                                """UPDATE balances 
+                                   SET total = total + ?,
+                                       available = available + ?,
+                                       updated_at = CURRENT_TIMESTAMP
+                                   WHERE user_id = ? AND asset = ?""",
+                                (required_amount, required_amount, user.id, 'USDT')
+                            )
+                        else:
+                            await db.execute(
+                                """INSERT INTO balances (user_id, asset, total, available, reserved)
+                                   VALUES (?, ?, ?, ?, 0)""",
+                                (user.id, 'USDT', required_amount, required_amount)
+                            )
+                    
+                    # Determine final status for IOC
+                    if order_req.order_type == 'ioc':
+                        if filled_quantity >= order_req.quantity:
+                            final_status = 'filled'  # Fully filled
+                        elif filled_quantity > 0:
+                            final_status = 'partially_filled'  # Partial fill
+                        else:
+                            final_status = 'cancelled'  # No fill
+                    else:  # market
+                        final_status = 'filled'
+                    
+                    # Create order as filled/partially_filled
+                    cursor = await db.execute(
+                        """INSERT INTO orders 
+                           (user_id, token_id, symbol, side, order_type, price, quantity, filled_quantity, status, executed_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
+                        (user.id, order_req.token_id, order_req.symbol, 
+                         order_req.side, order_req.order_type, execution_price, order_req.quantity, filled_quantity, final_status)
+                    )
+                else:
+                    # Limit order: reserve funds
+                    await db.execute(
+                        """UPDATE balances 
+                           SET available = available - ?,
+                               reserved = reserved + ?,
+                               updated_at = CURRENT_TIMESTAMP
+                           WHERE user_id = ? AND asset = ?""",
+                        (required_amount, required_amount, user.id, required_asset)
+                    )
+                    
+                    # Create order as 'open'
+                    cursor = await db.execute(
+                        """INSERT INTO orders 
+                           (user_id, token_id, symbol, side, order_type, price, quantity, status)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, 'open')""",
+                        (user.id, order_req.token_id, order_req.symbol, 
+                         order_req.side, order_req.order_type, execution_price, order_req.quantity)
+                    )
                 
-                cursor = await db.execute(
-                    """INSERT INTO orders 
-                       (user_id, token_id, symbol, side, price, quantity, status)
-                       VALUES (?, ?, ?, ?, ?, ?, 'open')""",
-                    (user.id, order_req.token_id, order_req.symbol, 
-                     order_req.side, order_req.price, order_req.quantity)
-                )
                 await db.commit()
                 order_id = cursor.lastrowid
                 
                 return await self.get_order_by_id(order_id)
     
     async def get_order(self, user: User, token_id: str) -> Optional[OrderResponse]:
-        """Get order details by token_id for the user"""
+        """Get order"""
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute(
-                """SELECT id, user_id, token_id, symbol, side, price, quantity, 
-                          status, created_at, executed_at
+                """SELECT id, user_id, token_id, symbol, side, order_type, price, quantity, 
+                          filled_quantity, status, created_at, executed_at
                    FROM orders 
                    WHERE token_id = ? AND user_id = ?""",
                 (token_id, user.id)
@@ -239,12 +352,12 @@ class TradingService:
             return self._row_to_order_response(row)
     
     async def get_order_by_id(self, order_id: int) -> OrderResponse:
-        """Get order details by order ID"""
+        """Get order by id"""
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute(
-                """SELECT id, user_id, token_id, symbol, side, price, quantity,
-                          status, created_at, executed_at
+                """SELECT id, user_id, token_id, symbol, side, order_type, price, quantity,
+                          filled_quantity, status, created_at, executed_at
                    FROM orders WHERE id = ?""",
                 (order_id,)
             )
@@ -252,13 +365,13 @@ class TradingService:
             return self._row_to_order_response(row)
     
     async def cancel_order(self, user: User, token_id: str) -> OrderResponse:
-        """Cancel an open order: check status, release reserved funds, and update order status"""
+        """Cancel order"""
         async with self._get_balance_lock(user.id):
             async with aiosqlite.connect(self.db_path) as db:
                 db.row_factory = aiosqlite.Row
                 
                 cursor = await db.execute(
-                    """SELECT id, symbol, side, price, quantity, status
+                    """SELECT id, symbol, side, order_type, price, quantity, status
                        FROM orders 
                        WHERE token_id = ? AND user_id = ?""",
                     (token_id, user.id)
@@ -277,6 +390,7 @@ class TradingService:
                 order_id = row['id']
                 symbol = row['symbol']
                 side = row['side']
+                order_type = row['order_type']
                 price = row['price']
                 quantity = row['quantity']
                 
@@ -307,13 +421,99 @@ class TradingService:
                 
                 return await self.get_order_by_id(order_id)
     
+    async def update_order(self, user: User, token_id: str, order_update: OrderUpdate) -> OrderResponse:
+        """Update order"""
+        if order_update.price is None and order_update.quantity is None:
+            raise ValueError("At least one of 'price' or 'quantity' must be provided")
+        
+        async with self._get_balance_lock(user.id):
+            async with aiosqlite.connect(self.db_path) as db:
+                db.row_factory = aiosqlite.Row
+                
+                # Get current order
+                cursor = await db.execute(
+                    """SELECT id, symbol, side, price, quantity, status
+                       FROM orders 
+                       WHERE token_id = ? AND user_id = ?""",
+                    (token_id, user.id)
+                )
+                row = await cursor.fetchone()
+                
+                if not row:
+                    raise ValueError(f"Order with token_id '{token_id}' not found")
+                
+                if row['status'] != 'open':
+                    raise ValueError(
+                        f"Cannot modify order with status '{row['status']}'. "
+                        f"Only 'open' orders can be modified."
+                    )
+                
+                order_id = row['id']
+                symbol = row['symbol']
+                side = row['side']
+                old_price = row['price']
+                old_quantity = row['quantity']
+                
+                # Determine new values
+                new_price = order_update.price if order_update.price is not None else old_price
+                new_quantity = order_update.quantity if order_update.quantity is not None else old_quantity
+                
+                # Calculate old and new reserved amounts
+                if side == 'buy':
+                    reserved_asset = 'USDT'
+                    old_reserved = old_price * old_quantity
+                    new_reserved = new_price * new_quantity
+                else:  # sell
+                    reserved_asset = symbol.replace('USDT', '')
+                    old_reserved = old_quantity
+                    new_reserved = new_quantity
+                
+                reserved_delta = new_reserved - old_reserved
+                
+                # Check if user has enough balance if reservation increases
+                if reserved_delta > 0:
+                    cursor = await db.execute(
+                        "SELECT available FROM balances WHERE user_id = ? AND asset = ?",
+                        (user.id, reserved_asset)
+                    )
+                    balance_row = await cursor.fetchone()
+                    
+                    if not balance_row or balance_row['available'] < reserved_delta:
+                        available = balance_row['available'] if balance_row else 0.0
+                        raise ValueError(
+                            f"Insufficient {reserved_asset} balance. "
+                            f"Additional required: {reserved_delta:.8f}, Available: {available:.8f}"
+                        )
+                
+                # Update balance reservations
+                await db.execute(
+                    """UPDATE balances 
+                       SET available = available - ?,
+                           reserved = reserved + ?,
+                           updated_at = CURRENT_TIMESTAMP
+                       WHERE user_id = ? AND asset = ?""",
+                    (reserved_delta, reserved_delta, user.id, reserved_asset)
+                )
+                
+                # Update order
+                await db.execute(
+                    """UPDATE orders 
+                       SET price = ?, quantity = ?
+                       WHERE id = ?""",
+                    (new_price, new_quantity, order_id)
+                )
+                
+                await db.commit()
+                
+                return await self.get_order_by_id(order_id)
+    
     async def get_open_orders(self) -> List[OrderResponse]:
-        """Get a list of all open orders in the system"""
+        """Get open orders"""
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             cursor = await db.execute(
-                """SELECT id, user_id, token_id, symbol, side, price, quantity,
-                          status, created_at, executed_at
+                """SELECT id, user_id, token_id, symbol, side, order_type, price, quantity,
+                          filled_quantity, status, created_at, executed_at
                    FROM orders 
                    WHERE status = 'open'
                    ORDER BY created_at ASC"""
@@ -323,15 +523,17 @@ class TradingService:
             return [self._row_to_order_response(row) for row in rows]
     
     def _row_to_order_response(self, row) -> OrderResponse:
-        """Convert a database row to an OrderResponse model"""
+        """row to order response"""
         return OrderResponse(
             id=row['id'],
             user_id=row['user_id'],
             token_id=row['token_id'],
             symbol=row['symbol'],
             side=row['side'],
+            order_type=row['order_type'],
             price=row['price'],
             quantity=row['quantity'],
+            filled_quantity=row['filled_quantity'] if row['filled_quantity'] else None,
             status=row['status'],
             created_at=datetime.fromisoformat(row['created_at']),
             executed_at=datetime.fromisoformat(row['executed_at']) if row['executed_at'] else None

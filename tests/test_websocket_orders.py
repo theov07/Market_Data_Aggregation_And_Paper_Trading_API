@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-Test script for WebSocket order management
-Demonstrates submit_order and cancel_order via WebSocket
-"""
 import asyncio
 import json
 import requests
@@ -15,60 +11,49 @@ WS_URL = "ws://localhost:8000/ws"
 
 
 def register_and_login(username: str, password: str) -> str:
-    """Register user and get JWT token"""
-    # Register
     response = requests.post(
         f"{BASE_URL}/auth/register",
         json={"username": username, "password": password}
     )
-    print(f"✓ Registered: {response.status_code}")
+    print(f"Registered: {response.status_code}")
     
-    # Login
     response = requests.post(
         f"{BASE_URL}/auth/login",
         json={"username": username, "password": password}
     )
     token = response.json()["access_token"]
-    print(f"✓ Logged in as {username}")
+    print(f"Logged in as {username}")
     return token
 
 
 def deposit_funds(token: str, asset: str, amount: float):
-    """Deposit funds"""
     headers = {"Authorization": f"Bearer {token}"}
     response = requests.post(
         f"{BASE_URL}/deposit",
         json={"asset": asset, "amount": amount},
         headers=headers
     )
-    print(f"✓ Deposited {amount} {asset}")
+    print(f"Deposited {amount} {asset}")
     return response.json()
 
 
 async def test_websocket_orders():
-    """Test WebSocket order submission and updates"""
-    print("\n" + "="*60)
-    print("  WEBSOCKET ORDER MANAGEMENT TEST")
-    print("="*60 + "\n")
+    print("\nWebSocket Order Management Test\n")
     
-    # Setup: Register and deposit funds
     username = f"ws_trader_{int(time.time())}"
     password = "testpass123"
     
     token = register_and_login(username, password)
     deposit_funds(token, "USDT", 100000.0)
     
-    print(f"\n{'='*60}")
-    print("  CONNECTING TO WEBSOCKET WITH AUTH")
-    print("="*60 + "\n")
+    print("\nConnecting to WebSocket...\n")
     
     # Connect to WebSocket with authentication
     ws_url_with_token = f"{WS_URL}?token={token}"
     
     async with websockets.connect(ws_url_with_token) as websocket:
-        # Receive welcome message
         welcome = await websocket.recv()
-        print(f"📩 {json.loads(welcome)}\n")
+        print(f"Connected: {json.loads(welcome)}\n")
         
         # Subscribe to best_touch to see market data
         print("Subscribing to market data...")
@@ -81,7 +66,7 @@ async def test_websocket_orders():
         
         # Wait for subscription confirmation
         msg = await websocket.recv()
-        print(f"✓ {json.loads(msg)}\n")
+        print(f" {json.loads(msg)}\n")
         
         # Wait a bit for market data to flow
         print("Waiting for market data (5 seconds)...")
@@ -93,7 +78,7 @@ async def test_websocket_orders():
                 msg = await asyncio.wait_for(websocket.recv(), timeout=0.1)
                 data = json.loads(msg)
                 if data["type"] == "best_touch":
-                    print(f"📊 Best touch: Bid ${data['data']['bid_price']:.2f}, Ask ${data['data']['ask_price']:.2f}")
+                    print(f" Best touch: Bid ${data['data']['bid_price']:.2f}, Ask ${data['data']['ask_price']:.2f}")
                     break
         except asyncio.TimeoutError:
             pass
@@ -112,7 +97,7 @@ async def test_websocket_orders():
             msg = await websocket.recv()
             data = json.loads(msg)
             if data["type"] == "confirmation" and data.get("action") == "unsubscribed":
-                print(f"✓ {data}\n")
+                print(f"{data}\n"))
                 break
         
         # Drain any remaining queued best_touch messages
@@ -157,7 +142,7 @@ async def test_websocket_orders():
             print("❌ No order confirmation received")
             return
         
-        print(f"\n✓ Order submitted:")
+        print("\nOrder submitted:")
         print(f"  Type: {order_response['type']}")
         print(f"  Order ID: {order_response['order']['id']}")
         print(f"  Token ID: {order_response['order']['token_id']}")
@@ -216,7 +201,7 @@ async def test_websocket_orders():
             print("❌ No cancellation confirmation received")
             return
         
-        print(f"\n✓ Order cancelled:")
+        print("\nOrder cancelled:")
         print(f"  Type: {cancel_response['type']}")
         print(f"  Token ID: {cancel_response['order']['token_id']}")
         print(f"  Status: {cancel_response['order']['status']}")
