@@ -13,12 +13,20 @@ API_PORT = int(os.getenv("API_PORT", "8000"))
 BASE_URL = f"http://localhost:{API_PORT}"
 
 # Authentication
-SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "SECRET_KEY environment variable must be set. "
+        "Generate one with: openssl rand -hex 32"
+    )
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 
+
 # Market type: "futures" or "spot"
 MARKET_TYPE = "futures"
+
 
 # Trading pairs to monitor
 SYMBOLS = [
@@ -29,6 +37,7 @@ SYMBOLS = [
     "ADAUSDT"
 ]
 
+
 # Kline intervals in seconds
 KLINE_INTERVALS = {
     "1s": 1,
@@ -37,10 +46,11 @@ KLINE_INTERVALS = {
     "5m": 300
 }
 
-# Exchange WebSocket endpoints
-BINANCE_WS_FUTURES = "wss://fstream.binance.com"
-BINANCE_WS_SPOT = "wss://stream.binance.com:9443"
-OKX_WS_BASE = "wss://ws.okx.com:8443/ws/v5/public"
+
+# Exchange WebSocket endpoints (configurable via env vars)
+BINANCE_WS_FUTURES = os.getenv("BINANCE_WS_FUTURES", "wss://fstream.binance.com")
+BINANCE_WS_SPOT = os.getenv("BINANCE_WS_SPOT", "wss://stream.binance.com:9443")
+OKX_WS_BASE = os.getenv("OKX_WS_URL", "wss://ws.okx.com:8443/ws/v5/public")
 
 # Get active Binance endpoint based on market type
 BINANCE_WS_BASE = BINANCE_WS_FUTURES if MARKET_TYPE == "futures" else BINANCE_WS_SPOT

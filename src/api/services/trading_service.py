@@ -188,13 +188,12 @@ class TradingService:
             else:
                 execution_price = best_touch.best_bid_price
         
+        # IOC and market orders execute the full quantity immediately
         filled_quantity = order_req.quantity
-        if order_req.order_type == 'ioc':
-            filled_quantity = min(order_req.quantity, 0.5)
         
         if order_req.side == 'buy':
             required_asset = 'USDT'
-            required_amount = execution_price * filled_quantity  # Use filled_quantity for IOC
+            required_amount = execution_price * filled_quantity
         else:
             required_asset = order_req.symbol.replace('USDT', '')
             required_amount = filled_quantity

@@ -1,15 +1,18 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
 
 
 class DepositRequest(BaseModel):
     asset: str = Field(..., description="Asset to deposit")
     amount: float = Field(..., gt=0, description="Amount to deposit")
     
-    @validator('asset')
-    def asset_uppercase(cls, v):
-        """Asset uppercase"""
+    @field_validator('asset')
+    @classmethod
+    def asset_uppercase(cls, v: str) -> str:
+        """
+        Asset uppercase
+        """
         return v.upper()
 
 
@@ -21,31 +24,43 @@ class OrderCreate(BaseModel):
     price: Optional[float] = None
     quantity: float
     
-    @validator('symbol')
-    def symbol_uppercase(cls, v):
-        """Symbol uppercase"""
+    @field_validator('symbol')
+    @classmethod
+    def symbol_uppercase(cls, v: str) -> str:
+        """
+        Symbol uppercase
+        """
         return v.upper()
     
-    @validator('side')
-    def validate_side(cls, v):
-        """Validate side"""
+    @field_validator('side')
+    @classmethod
+    def validate_side(cls, v: str) -> str:
+        """
+        Validate side
+        """
         v = v.lower()
         if v not in ['buy', 'sell']:
             raise ValueError("side must be 'buy' or 'sell'")
         return v
     
-    @validator('order_type')
-    def validate_order_type(cls, v):
-        """Validate order type"""
+    @field_validator('order_type')
+    @classmethod
+    def validate_order_type(cls, v: str) -> str:
+        """
+        Validate order type
+        """
         v = v.lower()
         if v not in ['limit', 'market', 'ioc']:
             raise ValueError("order_type must be 'limit', 'market', or 'ioc'")
         return v
     
-    @validator('price')
-    def validate_price_for_limit(cls, v, values):
-        """Validate price for limit"""
-        order_type = values.get('order_type', 'limit')
+    @field_validator('price')
+    @classmethod
+    def validate_price_for_limit(cls, v: Optional[float], info: ValidationInfo) -> Optional[float]:
+        """
+        Validate price for limit
+        """
+        order_type = info.data.get('order_type', 'limit')
         if order_type == 'limit' and v is None:
             raise ValueError("price is required for limit orders")
         return v
@@ -87,9 +102,12 @@ class OrderUpdate(BaseModel):
     price: Optional[float] = None
     quantity: Optional[float] = None
     
-    @validator('price', 'quantity')
-    def at_least_one_field(cls, v, values):
-        """At least one field"""
-        if v is None and all(val is None for val in values.values()):
+    @field_validator('price', 'quantity')
+    @classmethod
+    def at_least_one_field(cls, v: Optional[float], info: ValidationInfo) -> Optional[float]:
+        """
+        At least one field must be provided
+        """
+        if v is None and all(val is None for val in info.data.values()):
             raise ValueError("At least one of 'price' or 'quantity' must be provided")
         return v

@@ -20,10 +20,6 @@ class EWMAProcessor:
     def __init__(self, half_life_seconds: float):
         """
         Initialize EWMA processor.
-        
-        Args:
-            half_life_seconds: Half-life parameter in seconds. 
-                              Determines how quickly old observations decay.
         """
         self.half_life = half_life_seconds
         
@@ -35,15 +31,14 @@ class EWMAProcessor:
         self.ewma_values: Dict[tuple, tuple[float, datetime]] = {}
         
     def _get_key(self, symbol: str, exchange: str) -> tuple:
-        """Get key for storing EWMA"""
+        """
+        Get key for storing EWMA
+        """
         return (symbol, exchange)
     
     def _calculate_time_weighted_alpha(self, time_delta_seconds: float) -> float:
         """
         Calculate time-weighted alpha for irregular time intervals.
-        
-        For irregular intervals, we adjust alpha based on actual time elapsed:
-        alpha_adjusted = 1 - exp(-ln(2) * time_delta / half_life)
         """
         if time_delta_seconds <= 0:
             return 0
@@ -52,12 +47,6 @@ class EWMAProcessor:
     def process_trade(self, trade: Trade) -> EWMA:
         """
         Process a trade and update EWMA.
-        
-        Args:
-            trade: Trade object
-            
-        Returns:
-            Updated EWMA object
         """
         key = self._get_key(trade.symbol, trade.exchange)
         
@@ -90,7 +79,9 @@ class EWMAProcessor:
         )
     
     def get_current_ewma(self, symbol: str, exchange: str) -> Optional[EWMA]:
-        """Get current EWMA value for a symbol/exchange"""
+        """
+        Get current EWMA value for a symbol/exchange
+        """
         key = self._get_key(symbol, exchange)
         if key in self.ewma_values:
             value, timestamp = self.ewma_values[key]
@@ -106,10 +97,6 @@ class EWMAProcessor:
     def reset(self, symbol: Optional[str] = None, exchange: Optional[str] = None):
         """
         Reset EWMA values.
-        
-        Args:
-            symbol: If provided, reset only this symbol
-            exchange: If provided (with symbol), reset only this symbol/exchange combination
         """
         if symbol is None:
             # Reset all

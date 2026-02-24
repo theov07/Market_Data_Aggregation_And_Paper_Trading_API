@@ -4,21 +4,29 @@ Binance WebSocket client for order book and trade data
 import asyncio
 import json
 import logging
+import random
 import ssl
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Callable, List, Optional
 import websockets
 
 from src.data.models import Trade, OrderBookLevel
+from src.utils.backoff import compute_backoff
 from config import BINANCE_WS_BASE, MARKET_TYPE
 
 logger = logging.getLogger(__name__)
 
 
 class BinanceWebSocket:
-    """Handles WebSocket connections to Binance"""
-    
-    def __init__(self, symbols: List[str]):
+    """
+    Handles WebSocket connections to Binance
+    """
+    def __init__(
+        self,
+        symbols: List[str],
+        sleep_fn: Callable = None,
+        rand_fn: Callable = None
+    ):
         self.symbols = [s.lower() for s in symbols]
         self.ws = None
         self.running = False
@@ -27,16 +35,29 @@ class BinanceWebSocket:
         self.on_trade_callback: Optional[Callable] = None
         self.on_orderbook_callback: Optional[Callable] = None
         
+        # Dependency injection for testing
+        self.sleep_fn = sleep_fn or asyncio.sleep
+        self.rand_fn = rand_fn or random.uniform
+        
+        # Reconnection attempt counter
+        self._reconnect_attempt = 0
+        
     def set_trade_callback(self, callback: Callable):
-        """Set callback for trade data"""
+        """
+        Set callback for trade data
+        """
         self.on_trade_callback = callback
         
     def set_orderbook_callback(self, callback: Callable):
-        """Set callback for order book data"""
+        """
+        Set callback for order book data
+        """
         self.on_orderbook_callback = callback
     
     def _build_stream_url(self) -> str:
-        """Build WebSocket URL for multiple streams"""
+        """
+        Build WebSocket URL for multiple streams
+        """
         streams = []
         for symbol in self.symbols:
             streams.append(f"{symbol}@trade")
@@ -51,19 +72,23 @@ class BinanceWebSocket:
             return f"{BINANCE_WS_BASE}/{stream_names}"
     
     def _parse_trade(self, data: dict) -> Trade:
-        """Parse Binance trade message"""
+        """
+        Parse Binance trade message
+        """
         return Trade(
             symbol=data["s"],
             price=float(data["p"]),
             quantity=float(data["q"]),
             side="sell" if data["m"] else "buy",  # m=true means buyer is maker (sell)
-            timestamp=datetime.fromtimestamp(data["T"] / 1000),
+            timestamp=datetime.fromtimestamp(data["T"] / 1000, tz=timezone.utc),
             exchange="binance",
             trade_id=str(data["t"])
         )
     
     def _parse_orderbook(self, data: dict) -> tuple[OrderBookLevel, OrderBookLevel]:
-        """Parse Binance book ticker (best bid/ask)"""
+        """
+        Parse Binance book ticker (best bid/ask)
+        """
         best_bid = OrderBookLevel(
             price=float(data["b"]),
             quantity=float(data["B"]),
@@ -77,7 +102,9 @@ class BinanceWebSocket:
         return data["s"], best_bid, best_ask
     
     async def _handle_message(self, message: str):
-        """Handle incoming WebSocket message"""
+        """
+        Handle incoming WebSocket message
+        """
         try:
             data = json.loads(message)
             
@@ -103,7 +130,9 @@ class BinanceWebSocket:
             logger.error(f"Error handling Binance message: {e}")
     
     async def connect(self):
-        """Connect to Binance WebSocket and start listening"""
+        """
+        Connect to Binance WebSocket and start listening
+        """
         url = self._build_stream_url()
         self.running = True
         
@@ -114,8 +143,16 @@ class BinanceWebSocket:
         
         while self.running:
             try:
-                async with websockets.connect(url, ssl=ssl_context) as ws:
+                async with websockets.connect(
+                    url,
+                    ssl=ssl_context,
+                    ping_interval=20,
+                    ping_timeout=20
+                ) as ws:
                     self.ws = ws
+                    
+                    # Connection successful - reset backoff counter
+                    self._reconnect_attempt = 0
                     
                     async for message in ws:
                         if not self.running:
@@ -123,12 +160,24 @@ class BinanceWebSocket:
                         await self._handle_message(message)
                         
             except Exception as e:
-                logger.error(f"Binance connection error: {e}")
+                logger.error(f"Binance connection error (attempt {self._reconnect_attempt}): {e}")
                 if self.running:
-                    await asyncio.sleep(5)
+                    # Compute exponential backoff delay
+                    delay = compute_backoff(
+                        self._reconnect_attempt,
+                        base=0.5,
+                        max_delay=30.0,
+                        jitter=0.1,
+                        rand_fn=self.rand_fn
+                    )
+                    logger.info(f"Reconnecting in {delay:.2f}s...")
+                    await self.sleep_fn(delay)
+                    self._reconnect_attempt += 1
     
     async def disconnect(self):
-        """Disconnect from WebSocket"""
+        """
+        Disconnect from WebSocket
+        """
         self.running = False
         if self.ws:
             await self.ws.close()

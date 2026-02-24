@@ -1,7 +1,7 @@
 import asyncio
 import logging
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Optional, Dict
 import aiosqlite
 
 from src.api.models.trading_models import OrderResponse
@@ -30,6 +30,15 @@ class OrderExecutionEngine:
         
         self.orders_executed = 0
         self.last_check_time: Optional[datetime] = None
+        
+        # Order execution locks to prevent double execution
+        self._order_locks: Dict[str, asyncio.Lock] = {}
+    
+    def _get_order_lock(self, token_id: str) -> asyncio.Lock:
+        """Get or create a lock for a specific order token_id"""
+        if token_id not in self._order_locks:
+            self._order_locks[token_id] = asyncio.Lock()
+        return self._order_locks[token_id]
     
     async def start(self):
         """Start the order execution engine"""
@@ -58,7 +67,7 @@ class OrderExecutionEngine:
         while self.running:
             try:
                 await self._check_and_execute_orders()
-                self.last_check_time = datetime.now()
+                self.last_check_time = datetime.now(timezone.utc)
                 await asyncio.sleep(self.check_interval)
             except asyncio.CancelledError:
                 break
@@ -81,7 +90,18 @@ class OrderExecutionEngine:
             
             for order in open_orders:
                 try:
-                    await self._try_execute_order(db, order)
+                    # Prevent concurrent execution of the same order
+                    async with self._get_order_lock(order['token_id']):
+                        # Idempotence: recheck status within lock
+                        cursor = await db.execute(
+                            "SELECT status FROM orders WHERE token_id = ?",
+                            (order['token_id'],)
+                        )
+                        current = await cursor.fetchone()
+                        if not current or current['status'] != 'open':
+                            continue  # Already processed
+                        
+                        await self._try_execute_order(db, order)
                 except Exception as e:
                     logger.error(
                         f"Error executing order {order['token_id']}: {e}", 

@@ -4,21 +4,29 @@ OKX WebSocket client for order book and trade data
 import asyncio
 import json
 import logging
+import random
 import ssl
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Callable, List, Optional
 import websockets
 
 from src.data.models import Trade, OrderBookLevel
+from src.utils.backoff import compute_backoff
 from config import OKX_WS_BASE, MARKET_TYPE
 
 logger = logging.getLogger(__name__)
 
 
 class OKXWebSocket:
-    """Handles WebSocket connections to OKX"""
-    
-    def __init__(self, symbols: List[str]):
+    """
+    Handles WebSocket connections to OKX
+    """
+    def __init__(
+        self,
+        symbols: List[str],
+        sleep_fn: Callable = None,
+        rand_fn: Callable = None
+    ):
         # OKX uses different format: BTC-USDT instead of BTCUSDT
         self.symbols = [self._format_symbol(s) for s in symbols]
         self.ws = None
@@ -28,8 +36,17 @@ class OKXWebSocket:
         self.on_trade_callback: Optional[Callable] = None
         self.on_orderbook_callback: Optional[Callable] = None
         
+        # Dependency injection for testing
+        self.sleep_fn = sleep_fn or asyncio.sleep
+        self.rand_fn = rand_fn or random.uniform
+        
+        # Reconnection attempt counter
+        self._reconnect_attempt = 0
+        
     def _format_symbol(self, symbol: str) -> str:
-        """Convert BTCUSDT to OKX format (BTC-USDT-SWAP for futures, BTC-USDT for spot)"""
+        """
+        Convert BTCUSDT to OKX format (BTC-USDT-SWAP for futures, BTC-USDT for spot)
+        """
         # Simple conversion for common pairs
         if symbol.endswith("USDT"):
             base = symbol[:-4]
@@ -40,7 +57,9 @@ class OKXWebSocket:
         return symbol
     
     def _unformat_symbol(self, symbol: str) -> str:
-        """Convert BTC-USDT-SWAP back to BTCUSDT"""
+        """
+        Convert BTC-USDT-SWAP back to BTCUSDT
+        """
         # Remove -SWAP suffix for futures
         if symbol.endswith("-SWAP"):
             symbol = symbol[:-5]  # Remove "-SWAP"
@@ -48,15 +67,21 @@ class OKXWebSocket:
         return symbol.replace("-", "")
         
     def set_trade_callback(self, callback: Callable):
-        """Set callback for trade data"""
+        """
+        Set callback for trade data
+        """
         self.on_trade_callback = callback
         
     def set_orderbook_callback(self, callback: Callable):
-        """Set callback for order book data"""
+        """
+        Set callback for order book data
+        """
         self.on_orderbook_callback = callback
     
     def _build_subscription_message(self) -> dict:
-        """Build subscription message for OKX"""
+        """
+        Build subscription message for OKX
+        """
         args = []
         for symbol in self.symbols:
             args.append({"channel": "trades", "instId": symbol})
@@ -68,19 +93,23 @@ class OKXWebSocket:
         }
     
     def _parse_trade(self, data: dict) -> Trade:
-        """Parse OKX trade message"""
+        """
+        Parse OKX trade message
+        """
         return Trade(
             symbol=self._unformat_symbol(data["instId"]),
             price=float(data["px"]),
             quantity=float(data["sz"]),
             side=data["side"],
-            timestamp=datetime.fromtimestamp(int(data["ts"]) / 1000),
+            timestamp=datetime.fromtimestamp(int(data["ts"]) / 1000, tz=timezone.utc),
             exchange="okx",
             trade_id=data["tradeId"]
         )
     
     def _parse_orderbook(self, data: dict) -> tuple[str, OrderBookLevel, OrderBookLevel]:
-        """Parse OKX best bid/offer"""
+        """
+        Parse OKX best bid/offer
+        """
         symbol = self._unformat_symbol(data["instId"])
         
         best_bid = OrderBookLevel(
@@ -96,7 +125,9 @@ class OKXWebSocket:
         return symbol, best_bid, best_ask
     
     async def _handle_message(self, message: str):
-        """Handle incoming WebSocket message"""
+        """
+        Handle incoming WebSocket message
+        """
         try:
             data = json.loads(message)
             
@@ -151,10 +182,12 @@ class OKXWebSocket:
                         
         except Exception as e:
             logger.error(f"Error handling OKX message: {e}")
-    OKX_WS_BASE
+    
     async def connect(self):
-        """Connect to OKX WebSocket and start listening"""
-        url = "wss://ws.okx.com:8443/ws/v5/public"
+        """
+        Connect to OKX WebSocket and start listening
+        """
+        url = OKX_WS_BASE
         self.running = True
         
         # Disable SSL verification
@@ -164,12 +197,20 @@ class OKXWebSocket:
         
         while self.running:
             try:
-                async with websockets.connect(url, ssl=ssl_context) as ws:
+                async with websockets.connect(
+                    url,
+                    ssl=ssl_context,
+                    ping_interval=20,
+                    ping_timeout=20
+                ) as ws:
                     self.ws = ws
                     
                     # Send subscription message
                     sub_msg = self._build_subscription_message()
                     await ws.send(json.dumps(sub_msg))
+                    
+                    # Connection successful - reset backoff counter
+                    self._reconnect_attempt = 0
                     
                     async for message in ws:
                         if not self.running:
@@ -177,12 +218,24 @@ class OKXWebSocket:
                         await self._handle_message(message)
                         
             except Exception as e:
-                logger.error(f"OKX connection error: {e}")
+                logger.error(f"OKX connection error (attempt {self._reconnect_attempt}): {e}")
                 if self.running:
-                    await asyncio.sleep(5)
+                    # Compute exponential backoff delay
+                    delay = compute_backoff(
+                        self._reconnect_attempt,
+                        base=0.5,
+                        max_delay=30.0,
+                        jitter=0.1,
+                        rand_fn=self.rand_fn
+                    )
+                    logger.info(f"Reconnecting in {delay:.2f}s...")
+                    await self.sleep_fn(delay)
+                    self._reconnect_attempt += 1
     
     async def disconnect(self):
-        """Disconnect from WebSocket"""
+        """
+        Disconnect from WebSocket
+        """
         self.running = False
         if self.ws:
             await self.ws.close()

@@ -3,67 +3,84 @@ Authentication data models
 """
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class UserCreate(BaseModel):
-    """Model for user registration"""
+    """
+    Model for user registration
+    """
     username: str = Field(..., min_length=3, max_length=50, description="Username (3-50 characters)")
     password: str = Field(..., min_length=6, description="Password (minimum 6 characters)")
     
-    @validator('username')
-    def validate_username(cls, v):
-        """Validate username contains only alphanumeric and underscore"""
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "username": "trader_123",
+                "password": "securePassword123"
+            }
+        }
+    )
+    
+    @field_validator('username')
+    @classmethod
+    def validate_username(cls, v: str) -> str:
+        """
+        Validate username contains only alphanumeric and underscore
+        """
         if not v.replace('_', '').isalnum():
             raise ValueError('Username must contain only letters, numbers, and underscores')
         return v.lower()  # Store usernames in lowercase
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "username": "trader_123",
-                "password": "securePassword123"
-            }
-        }
 
 
 class UserLogin(BaseModel):
-    """Model for user login"""
+    """
+    Model for user login
+    """
     username: str = Field(..., description="Username")
     password: str = Field(..., description="Password")
     
-    @validator('username')
-    def lowercase_username(cls, v):
-        """Convert username to lowercase for case-insensitive login"""
-        return v.lower()
-    
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "username": "trader_123",
                 "password": "securePassword123"
             }
         }
+    )
+    
+    @field_validator('username')
+    @classmethod
+    def lowercase_username(cls, v: str) -> str:
+        """
+        Convert username to lowercase for case-insensitive login
+        """
+        return v.lower()
 
 
 class Token(BaseModel):
-    """JWT token response"""
+    """
+    JWT token response
+    """
     access_token: str = Field(..., description="JWT access token")
     token_type: str = Field(default="bearer", description="Token type")
     username: str = Field(..., description="Authenticated username")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 "token_type": "bearer",
                 "username": "trader_123"
             }
         }
+    )
 
 
 class User(BaseModel):
-    """Internal user model"""
+    """
+    Internal user model
+    """
     id: int
     username: str
     hashed_password: str
@@ -72,5 +89,7 @@ class User(BaseModel):
 
 
 class TokenData(BaseModel):
-    """Data stored in JWT token"""
+    """
+    Data stored in JWT token
+    """
     username: Optional[str] = None

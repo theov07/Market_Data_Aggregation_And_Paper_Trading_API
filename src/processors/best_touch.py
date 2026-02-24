@@ -1,7 +1,7 @@
 """
 Best Touch aggregator - finds best bid/ask across multiple exchanges
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional
 from src.data.models import OrderBookLevel, BestTouch
 
@@ -16,11 +16,12 @@ class BestTouchAggregator:
     
     def __init__(self):
         # Store latest order book levels for each symbol/exchange
-        # Key: (symbol, exchange) -> (bid, ask)
         self.order_books: Dict[tuple, tuple[OrderBookLevel, OrderBookLevel]] = {}
         
     def _get_key(self, symbol: str, exchange: str) -> tuple:
-        """Get key for storing order book"""
+        """
+        Get key for storing order book
+        """
         return (symbol, exchange)
     
     def update_orderbook(self, symbol: str, bid: OrderBookLevel, ask: OrderBookLevel):
@@ -87,9 +88,11 @@ class BestTouchAggregator:
             best_ask_price=best_ask.price,
             best_ask_quantity=best_ask.quantity,
             best_ask_exchange=best_ask_exchange,
-            timestamp=datetime.now()
+            timestamp=datetime.now(timezone.utc)
         )
     
     def get_all_symbols(self) -> set[str]:
-        """Get all symbols we have data for"""
+        """
+        Return all symbols we have data for
+        """
         return {symbol for symbol, _ in self.order_books.keys()}

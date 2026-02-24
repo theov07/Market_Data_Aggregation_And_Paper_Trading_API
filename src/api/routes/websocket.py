@@ -21,19 +21,25 @@ router = APIRouter()
 
 
 def get_websocket_manager() -> WebSocketManager:
-    """Dependency to get WebSocket manager"""
+    """
+    Dependency to get WebSocket manager
+    """
     from src.api.server import websocket_manager
     return websocket_manager
 
 
 def get_auth_service() -> AuthService:
-    """Dependency to get auth service"""
+    """
+    Dependency to get auth service
+    """
     from src.api.dependencies import get_auth_service as get_service
     return get_service()
 
 
 def get_trading_service() -> TradingService:
-    """Dependency to get trading service"""
+    """
+    Dependency to get trading service
+    """
     from src.api.routes.trading import trading_service
     if trading_service is None:
         raise ValueError("Trading service not initialized")
@@ -105,7 +111,9 @@ async def websocket_endpoint(
 
 
 async def _send_welcome_message(websocket: WebSocket, user: Optional[User] = None):
-    """Send welcome message to newly connected client"""
+    """
+    Send welcome message to newly connected client
+    """
     auth_status = f"Authenticated as {user.username}" if user else "Not authenticated"
     message = {
         "type": "info",
@@ -126,7 +134,9 @@ async def _handle_client_message(
     user: Optional[User],
     trading_service: TradingService
 ):
-    """Handle incoming message from client"""
+    """
+    Handle incoming message from client
+    """
     try:
         data = json.loads(message)
         action = data.get("action")
@@ -164,7 +174,9 @@ async def _handle_subscribe(
     subscription: WebSocketSubscription,
     ws_manager: WebSocketManager
 ):
-    """Handle subscribe action"""
+    """
+    Handle subscribe action
+    """
     # Validate kline interval requirement
     if subscription.data_type == "kline" and not subscription.interval:
         await _send_error_message(websocket, "interval is required for kline subscriptions")
@@ -174,7 +186,8 @@ async def _handle_subscribe(
         data_type=subscription.data_type,
         symbol=subscription.symbol,
         exchange=subscription.exchange,
-        interval=subscription.interval
+        interval=subscription.interval,
+        half_life=subscription.half_life
     )
     
     await ws_manager.add_subscription(websocket, client_sub)
@@ -186,12 +199,15 @@ async def _handle_unsubscribe(
     subscription: WebSocketSubscription,
     ws_manager: WebSocketManager
 ):
-    """Handle unsubscribe action"""
+    """
+    Handle unsubscribe action
+    """
     client_sub = ClientSubscription(
         data_type=subscription.data_type,
         symbol=subscription.symbol,
         exchange=subscription.exchange,
-        interval=subscription.interval
+        interval=subscription.interval,
+        half_life=subscription.half_life
     )
     
     await ws_manager.remove_subscription(websocket, client_sub.get_key())
@@ -205,7 +221,9 @@ async def _handle_submit_order(
     trading_service: TradingService,
     ws_manager: WebSocketManager
 ):
-    """Handle order submission via WebSocket"""
+    """
+    Handle order submission via WebSocket
+    """
     try:
         # Create order using trading service
         order_req = OrderCreate(
@@ -246,7 +264,9 @@ async def _handle_cancel_order(
     trading_service: TradingService,
     ws_manager: WebSocketManager
 ):
-    """Handle order cancellation via WebSocket"""
+    """
+    Handle order cancellation via WebSocket
+    """
     try:
         # Cancel order using trading service
         cancelled_order = await trading_service.cancel_order(user, cancel_msg.token_id)
@@ -269,7 +289,9 @@ async def _handle_cancel_order(
 
 
 async def _send_confirmation(websocket: WebSocket, action: str, subscription_key: str):
-    """Send confirmation message to client"""
+    """
+    Send confirmation message to client
+    """
     message = {
         "type": "confirmation",
         "action": action,
@@ -279,7 +301,9 @@ async def _send_confirmation(websocket: WebSocket, action: str, subscription_key
 
 
 async def _send_error_message(websocket: WebSocket, error: str):
-    """Send error message to client"""
+    """
+    Send error message to client
+    """
     message = {
         "type": "error",
         "message": error
