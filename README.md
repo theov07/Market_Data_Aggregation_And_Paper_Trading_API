@@ -37,6 +37,29 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+### Required Environment Variables
+
+Before running the server, you **must** set the `SECRET_KEY` environment variable:
+
+```bash
+# Generate a secure secret key
+export SECRET_KEY=$(openssl rand -hex 32)
+
+# Or set manually (minimum 32 characters recommended)
+export SECRET_KEY="your-secure-secret-key-min-32-chars"
+```
+
+**Optional environment variables:**
+```bash
+export API_HOST="0.0.0.0"                                    # Default: 0.0.0.0
+export API_PORT="8000"                                        # Default: 8000
+export BINANCE_WS_FUTURES="wss://fstream.binance.com"         # Binance Futures
+export BINANCE_WS_SPOT="wss://stream.binance.com:9443"        # Binance Spot
+export OKX_WS_URL="wss://ws.okx.com:8443/ws/v5/public"        # OKX
+```
+
+⚠️ **Important:** Without `SECRET_KEY`, the server will refuse to start.
+
 ### Launch Server
 
 ```bash
@@ -54,8 +77,7 @@ Execute the interactive notebook:
 jupyter notebook client_demo.ipynb
 ```
 
-
-The demo demonstrates all API features: authentication, market data subscriptions, fund deposits, order management, and WebSocket streaming.
+The notebook automatically starts the server with a random SECRET_KEY and demonstrates all API features: authentication, market data subscriptions, fund deposits, order management, and WebSocket streaming.
 
 ---
 
@@ -74,7 +96,7 @@ The demo demonstrates all API features: authentication, market data subscription
 - **Best Touch**: Best bid/ask price and volume across exchanges with arbitrage detection
 - **Trades**: Real-time trade feed with exchange routing
 - **Klines**: Live candlesticks (1s, 10s, 1m, 5m intervals) built from WebSocket data
-- **EWMA**: Exponential weighted moving average with configurable half-life
+- **EWMA**: Exponential weighted moving average with configurable half-life (default 30s, range 1-300s)
 
 All streams support exchange filtering: `all`, `binance`, or `okx`
 
@@ -177,7 +199,8 @@ ws://localhost:8000/ws?token={jwt_token}
   "action": "subscribe",
   "data_type": "ewma",
   "symbol": "SOLUSDT",
-  "exchange": "all"
+  "exchange": "all",
+  "half_life": 30
 }
 ```
 
@@ -207,39 +230,57 @@ ws://localhost:8000/ws?token={jwt_token}
 Market_Data_Aggregation_And_Paper_Trading_API/
 │
 ├── run_server.py              # Server entry point
-├── client_demo.ipynb          # Interactive demo notebook
+├── client_demo.ipynb          # Interactive demo client
 ├── config.py                  # Configuration (symbols, exchanges, intervals)
 ├── requirements.txt           # Python dependencies
+├── view_users.py              # Database inspection utility
+├── users.db                   # SQLite database (auto-created)
 │
 ├── src/
 │   ├── exchanges/             # Exchange WebSocket connectors
-│   │   ├── binance_ws.py      # Binance Futures connector
-│   │   └── okx_ws.py          # OKX Perpetual Swaps connector
+│   │   ├── binance_ws.py      # Binance Futures WebSocket client
+│   │   └── okx_ws.py          # OKX Perpetual Swaps WebSocket client
 │   │
-│   ├── processors/            # Data processing
-│   │   ├── kline_builder.py   # Live candlestick aggregation
-│   │   └── ewma_calculator.py # Moving average computation
+│   ├── processors/            # Market data processing
+│   │   ├── best_touch.py      # Best bid/ask aggregation
+│   │   ├── kline_processor.py # Live candlestick builder
+│   │   └── ewma_processor.py  # Exponential weighted moving average
 │   │
-│   ├── api/
-│   │   ├── server.py          # FastAPI application
-│   │   ├── routes/            # API endpoints
-│   │   │   ├── auth.py        # Authentication
-│   │   │   ├── trading.py     # Orders and deposits
-│   │   │   ├── websocket.py   # WebSocket subscriptions
-│   │   │   └── info.py        # Asset/pair information
-│   │   │
-│   │   └── services/          
-│   │       ├── auth_service.py           # User management
-│   │       ├── trading_service.py        # Order processing
-│   │       ├── market_data_service.py    # Data distribution
-│   │       ├── order_execution_engine.py # Order matching
-│   │       └── websocket_manager.py      # Client connections
+│   ├── utils/                 # Utility functions
+│   │   ├── backoff.py         # Exponential backoff for reconnections
+│   │   └── formatting.py      # Data formatting helpers
 │   │
-│   └── data/
-│       └── models.py          # Database models (SQLAlchemy)
+│   ├── data/
+│   │   └── models.py          # SQLAlchemy database models
+│   │
+│   └── api/
+│       ├── server.py          # FastAPI application
+│       │
+│       ├── routes/            # REST and WebSocket endpoints
+│       │   ├── auth.py        # Registration and login
+│       │   ├── info.py        # Asset and pair information
+│       │   ├── trading.py     # Orders, deposits, balances
+│       │   ├── websocket.py   # WebSocket subscriptions
+│       │   └── ws_docs.py     # WebSocket API documentation
+│       │
+│       ├── services/          # Business logic
+│       │   ├── auth_service.py           # User authentication
+│       │   ├── trading_service.py        # Order and balance management
+│       │   ├── market_data_service.py    # Data stream distribution
+│       │   ├── order_execution_engine.py # Order execution against best touch
+│       │   └── websocket_manager.py      # Client WebSocket connections
+│       │
+│       └── models/            # Pydantic request/response models
+│           ├── auth_models.py    # Authentication schemas
+│           ├── trading_models.py # Order and deposit schemas
+│           └── api_models.py     # WebSocket subscription schemas
 │
-└── users.db                   # SQLite database (auto-created)
-└── view_users.py              # View database 
+└── schemas/                   # Architecture diagrams (optional)
+    ├── 00_fastapi_architecture.drawio
+    ├── 01_user_authentication.drawio
+    ├── 02_market_data_flow.drawio
+    ├── 03_data_processing_pipeline.drawio
+    └── 04_paper_trading_flow.drawio
 ```
 
 ---
@@ -272,6 +313,80 @@ KLINE_INTERVALS = {
     "5m": 300
 }
 ```
+
+**WebSocket URLs (via Environment Variables):**
+
+WebSocket endpoints can be overridden via environment variables without modifying the source code.
+
+```bash
+# OKX (default: wss://ws.okx.com:8443/ws/v5/public)
+export OKX_WS_URL="wss://custom.okx.endpoint/ws/v5/public"
+
+# Binance Futures (default: wss://fstream.binance.com)
+export BINANCE_WS_FUTURES="wss://custom.binance.futures/stream"
+
+# Binance Spot (default: wss://stream.binance.com:9443)
+export BINANCE_WS_SPOT="wss://custom.binance.spot/stream"
+
+python run_server.py
+```
+
+If no environment variable is provided, official exchange endpoints are used by default.
+
+Typical use cases:
+
+- Running against testnet environments  
+- Connecting through proxies or internal routing layers  
+- Testing with mock WebSocket servers  
+
+---
+
+## Reconnection Strategy
+
+Exchange connections are automatically re-established in case of failure using an exponential backoff strategy.
+
+Delay formula:
+
+```
+delay = min(max_delay, base_delay × 2^attempt) + jitter
+```
+
+Parameters:
+
+- Base delay: 0.5 seconds  
+- Maximum delay: 30 seconds  
+- Jitter: ±10% random variation  
+
+Example progression:
+
+- Attempt 0 → 0.5s  
+- Attempt 1 → 1.0s  
+- Attempt 2 → 2.0s  
+- Attempt 3 → 4.0s  
+- ... capped at 30 seconds  
+
+The delay resets after a successful reconnection.
+
+The reconnect loop is safely interrupted when the server shuts down, preventing unnecessary CPU usage.
+
+This mechanism avoids aggressive reconnection attempts during exchange outages and improves overall stability.
+
+
+---
+
+## WebSocket Heartbeat
+
+Each exchange connection uses the built-in ping/pong mechanism provided by the `websockets` library.
+
+- Ping interval: 20 seconds  
+- Ping timeout: 20 seconds  
+
+If a pong response is not received within the timeout window, the connection is considered dead and automatically closed. This triggers the reconnection logic described above.
+
+This prevents situations where a connection appears active but no longer receives market data.
+
+Combined with exponential backoff, this ensures resilient and self-healing exchange connectivity.
+
 
 ---
 
