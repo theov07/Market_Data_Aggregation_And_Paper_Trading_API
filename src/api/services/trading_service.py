@@ -199,6 +199,9 @@ class TradingService:
             required_asset = order_req.symbol.replace('USDT', '')
             required_amount = filled_quantity
         
+        # For sell orders, calculate USDT received separately
+        usdt_amount = execution_price * filled_quantity if order_req.side == 'sell' else None
+        
         async with self._get_balance_lock(user.id):
             async with aiosqlite.connect(self.db_path) as db:
                 cursor = await db.execute(
@@ -280,13 +283,13 @@ class TradingService:
                                        available = available + ?,
                                        updated_at = CURRENT_TIMESTAMP
                                    WHERE user_id = ? AND asset = ?""",
-                                (required_amount, required_amount, user.id, 'USDT')
+                                (usdt_amount, usdt_amount, user.id, 'USDT')
                             )
                         else:
                             await db.execute(
                                 """INSERT INTO balances (user_id, asset, total, available, reserved)
                                    VALUES (?, ?, ?, ?, 0)""",
-                                (user.id, 'USDT', required_amount, required_amount)
+                                (user.id, 'USDT', usdt_amount, usdt_amount)
                             )
                     
                     # Determine final status for IOC

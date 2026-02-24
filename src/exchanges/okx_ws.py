@@ -40,7 +40,11 @@ class OKXWebSocket:
         return symbol
     
     def _unformat_symbol(self, symbol: str) -> str:
-        """Convert BTC-USDT back to BTCUSDT"""
+        """Convert BTC-USDT-SWAP back to BTCUSDT"""
+        # Remove -SWAP suffix for futures
+        if symbol.endswith("-SWAP"):
+            symbol = symbol[:-5]  # Remove "-SWAP"
+        # Remove remaining dashes
         return symbol.replace("-", "")
         
     def set_trade_callback(self, callback: Callable):
@@ -98,7 +102,6 @@ class OKXWebSocket:
             
             # Handle subscription confirmation
             if data.get("event") == "subscribe":
-                logger.info(f"OKX subscription confirmed: {data.get('arg')}")
                 return
             
             # Handle subscription errors
@@ -154,8 +157,6 @@ class OKXWebSocket:
         url = "wss://ws.okx.com:8443/ws/v5/public"
         self.running = True
         
-        logger.info("Connecting to OKX...")
-        
         # Disable SSL verification
         ssl_context = ssl.create_default_context()
         ssl_context.check_hostname = False
@@ -165,12 +166,10 @@ class OKXWebSocket:
             try:
                 async with websockets.connect(url, ssl=ssl_context) as ws:
                     self.ws = ws
-                    logger.info("Connected to OKX")
                     
                     # Send subscription message
                     sub_msg = self._build_subscription_message()
                     await ws.send(json.dumps(sub_msg))
-                    logger.debug(f"Sent OKX subscription")
                     
                     async for message in ws:
                         if not self.running:
@@ -180,7 +179,6 @@ class OKXWebSocket:
             except Exception as e:
                 logger.error(f"OKX connection error: {e}")
                 if self.running:
-                    logger.info("Reconnecting in 5 seconds...")
                     await asyncio.sleep(5)
     
     async def disconnect(self):

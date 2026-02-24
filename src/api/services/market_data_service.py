@@ -3,6 +3,7 @@ Market data service - coordinates exchange connections and data processing
 """
 import asyncio
 from typing import Dict
+import logging
 
 from config import SYMBOLS, KLINE_INTERVALS
 from src.data.models import Trade, Kline, EWMA, BestTouch, OrderBookLevel
@@ -14,6 +15,7 @@ from src.processors.best_touch import BestTouchAggregator
 from src.utils.formatting import PriceFormatter
 from .websocket_manager import WebSocketManager
 
+logger = logging.getLogger(__name__)
 
 class MarketDataService:
     """Main service for market data aggregation and broadcasting"""
@@ -78,6 +80,10 @@ class MarketDataService:
     
     async def _handle_trade(self, trade: Trade):
         """Handle incoming trade from exchanges"""
+        # Filter invalid trades
+        if trade.price <= 0 or trade.quantity <= 0:
+            return
+        
         # Update price precision
         self.price_formatter.update_precision(trade.symbol, trade.price)
         

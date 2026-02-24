@@ -1,9 +1,12 @@
 """
 Kline (candlestick) processor that aggregates trades into OHLCV candles
 """
+import logging
 from datetime import datetime, timedelta
 from typing import Dict, Optional
 from src.data.models import Trade, Kline
+
+logger = logging.getLogger(__name__)
 
 
 class KlineProcessor:
@@ -31,6 +34,10 @@ class KlineProcessor:
         Process a trade and update the current kline.
         Returns the completed kline if the candle just closed, None otherwise.
         """
+        # BUG FIX: Ignore trades with invalid price
+        if trade.price <= 0:
+            return None
+        
         key = self._get_key(trade.symbol, trade.exchange)
         candle_start = self._get_candle_start_time(trade.timestamp)
         candle_end = candle_start + timedelta(seconds=self.interval_seconds)
@@ -66,7 +73,9 @@ class KlineProcessor:
         else:
             # Update existing kline
             current_kline.high = max(current_kline.high, trade.price)
-            current_kline.low = min(current_kline.low, trade.price)
+            # BUG FIX: Prevent Low from becoming 0 if trade.price is 0
+            if trade.price > 0:
+                current_kline.low = min(current_kline.low, trade.price)
             current_kline.close = trade.price
             current_kline.volume += trade.quantity
             

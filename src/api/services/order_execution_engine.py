@@ -34,12 +34,10 @@ class OrderExecutionEngine:
     async def start(self):
         """Start the order execution engine"""
         if self.running:
-            logger.warning("Execution engine already running")
             return
         
         self.running = True
         self._task = asyncio.create_task(self._execution_loop())
-        logger.info("Order execution engine started")
     
     async def stop(self):
         """Stop the order execution engine"""
@@ -53,12 +51,9 @@ class OrderExecutionEngine:
                 await self._task
             except asyncio.CancelledError:
                 pass
-        
-        logger.info(f"Order execution engine stopped (executed {self.orders_executed} orders)")
     
     async def _execution_loop(self):
         """Main loop to check and execute orders"""
-        logger.info("Execution loop started")
         
         while self.running:
             try:

@@ -107,8 +107,6 @@ class BinanceWebSocket:
         url = self._build_stream_url()
         self.running = True
         
-        logger.info("Connecting to Binance...")
-        
         # Disable SSL verification
         ssl_context = ssl.create_default_context()
         ssl_context.check_hostname = False
@@ -118,7 +116,6 @@ class BinanceWebSocket:
             try:
                 async with websockets.connect(url, ssl=ssl_context) as ws:
                     self.ws = ws
-                    logger.info("Connected to Binance")
                     
                     async for message in ws:
                         if not self.running:
@@ -128,7 +125,6 @@ class BinanceWebSocket:
             except Exception as e:
                 logger.error(f"Binance connection error: {e}")
                 if self.running:
-                    logger.info("Reconnecting in 5 seconds...")
                     await asyncio.sleep(5)
     
     async def disconnect(self):

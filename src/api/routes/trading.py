@@ -36,6 +36,7 @@ async def deposit(
     current_user: User = Depends(get_current_user),
     service: TradingService = Depends(get_trading_service)
 ):
+    """Deposit funds into user account"""
     try:
         return await service.deposit(current_user, deposit_req)
     except ValueError as e:
@@ -59,6 +60,7 @@ async def get_balance(
     current_user: User = Depends(get_current_user),
     service: TradingService = Depends(get_trading_service)
 ):
+    """Get account balances"""
     try:
         balances = await service.get_balance(current_user)
         return BalanceResponse(balances=balances)
@@ -80,6 +82,7 @@ async def create_order(
     current_user: User = Depends(get_current_user),
     service: TradingService = Depends(get_trading_service)
 ):
+    """Create a new order"""
     try:
         return await service.create_order(current_user, order_req)
     except ValueError as e:
@@ -104,6 +107,7 @@ async def get_order(
     current_user: User = Depends(get_current_user),
     service: TradingService = Depends(get_trading_service)
 ):
+    """Get order status by token_id"""
     try:
         order = await service.get_order(current_user, token_id)
         if not order:
@@ -132,6 +136,7 @@ async def update_order(
     current_user: User = Depends(get_current_user),
     service: TradingService = Depends(get_trading_service)
 ):
+    """Update an existing order"""
     try:
         return await service.update_order(current_user, token_id, order_update)
     except ValueError as e:
@@ -163,6 +168,7 @@ async def cancel_order(
     current_user: User = Depends(get_current_user),
     service: TradingService = Depends(get_trading_service)
 ):
+    """Cancel an existing order by token_id"""
     try:
         return await service.cancel_order(current_user, token_id)
     except ValueError as e:
