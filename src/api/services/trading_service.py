@@ -172,6 +172,7 @@ class TradingService:
         
         # For market orders or IOC, get current best touch price
         execution_price = order_req.price
+        available_at_best_touch = None  # Will hold available qty from book for IOC
         is_immediate = order_req.order_type in ['market', 'ioc']
         
         if is_immediate:
@@ -185,11 +186,16 @@ class TradingService:
             # Buy at best ask, sell at best bid
             if order_req.side == 'buy':
                 execution_price = best_touch.best_ask_price
+                available_at_best_touch = best_touch.best_ask_quantity
             else:
                 execution_price = best_touch.best_bid_price
+                available_at_best_touch = best_touch.best_bid_quantity
         
-        # IOC and market orders execute the full quantity immediately
-        filled_quantity = order_req.quantity
+        # IOC orders fill up to the available quantity at best touch; market orders fill in full
+        if order_req.order_type == 'ioc' and available_at_best_touch is not None:
+            filled_quantity = min(order_req.quantity, available_at_best_touch)
+        else:
+            filled_quantity = order_req.quantity
         
         if order_req.side == 'buy':
             required_asset = 'USDT'
@@ -535,7 +541,7 @@ class TradingService:
             order_type=row['order_type'],
             price=row['price'],
             quantity=row['quantity'],
-            filled_quantity=row['filled_quantity'] if row['filled_quantity'] else None,
+            filled_quantity=row['filled_quantity'] if row['filled_quantity'] is not None else None,
             status=row['status'],
             created_at=datetime.fromisoformat(row['created_at']),
             executed_at=datetime.fromisoformat(row['executed_at']) if row['executed_at'] else None
