@@ -163,37 +163,35 @@ class OrderExecutionEngine:
             
             if side == 'buy':
                 spent_asset = quote_asset
-                spent_amount = price * quantity
-                received_asset = base_asset
+                reserved_amount = price * quantity         # what was locked at order creation
+                actual_spent    = execution_price * quantity  # what is really debited
+                received_asset  = base_asset
                 received_amount = quantity
-                
             else:
-                spent_asset = base_asset
-                spent_amount = quantity
-                received_asset = quote_asset
-                received_amount = execution_price * quantity
-            
+                spent_asset     = base_asset
+                reserved_amount = quantity                 # BTC locked at order creation
+                actual_spent    = quantity                 # same — full BTC qty is sold
+                received_asset  = quote_asset
+                received_amount = execution_price * quantity  # USDT received at execution price
+
             await db.execute(
                 """UPDATE orders 
                    SET status = 'filled', executed_at = CURRENT_TIMESTAMP
                    WHERE id = ?""",
                 (order_id,)
             )
-            
+
+            # Release the full reservation and deduct only what was actually spent.
+            # For buys: if execution_price < limit price the difference is returned to available.
+            surplus = reserved_amount - actual_spent  # > 0 on buy price improvement; 0 for sells
             await db.execute(
                 """UPDATE balances
-                   SET reserved = reserved - ?,
+                   SET reserved  = reserved  - ?,
+                       total     = total     - ?,
+                       available = available + ?,
                        updated_at = CURRENT_TIMESTAMP
                    WHERE user_id = ? AND asset = ?""",
-                (spent_amount, user_id, spent_asset)
-            )
-            
-            await db.execute(
-                """UPDATE balances
-                   SET total = total - ?,
-                       updated_at = CURRENT_TIMESTAMP
-                   WHERE user_id = ? AND asset = ?""",
-                (spent_amount, user_id, spent_asset)
+                (reserved_amount, actual_spent, surplus, user_id, spent_asset)
             )
             
             cursor = await db.execute(
