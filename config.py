@@ -3,7 +3,9 @@ Configuration for the Market Data Aggregation system
 """
 import os
 import secrets
+from dotenv import load_dotenv
 
+load_dotenv()  # Charge les variables du fichier .env
 # Database
 DB_PATH = "users.db"
 

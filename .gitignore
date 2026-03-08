@@ -32,3 +32,5 @@ Thumbs.db
 *.egg-info/
 dist/
 build/
+
+.env
