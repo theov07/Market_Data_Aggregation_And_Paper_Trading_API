@@ -92,16 +92,18 @@ class OrderExecutionEngine:
                 try:
                     # Prevent concurrent execution of the same order
                     async with self._get_order_lock(order['token_id']):
-                        # Idempotence: recheck status within lock
+                        # Idempotence + freshness: reload full order row within lock
                         cursor = await db.execute(
-                            "SELECT status FROM orders WHERE token_id = ?",
+                            """SELECT id, user_id, token_id, symbol, side, price, quantity, status
+                               FROM orders
+                               WHERE token_id = ?""",
                             (order['token_id'],)
                         )
-                        current = await cursor.fetchone()
-                        if not current or current['status'] != 'open':
+                        current_order = await cursor.fetchone()
+                        if not current_order or current_order['status'] != 'open':
                             continue  # Already processed
                         
-                        await self._try_execute_order(db, order)
+                        await self._try_execute_order(db, current_order)
                 except Exception as e:
                     logger.error(
                         f"Error executing order {order['token_id']}: {e}", 
@@ -174,25 +176,42 @@ class OrderExecutionEngine:
                 received_asset  = quote_asset
                 received_amount = execution_price * quantity  # USDT received at execution price
 
-            await db.execute(
+            cursor = await db.execute(
                 """UPDATE orders 
-                   SET status = 'filled', executed_at = CURRENT_TIMESTAMP
-                   WHERE id = ?""",
-                (order_id,)
+                   SET status = 'filled',
+                       filled_quantity = ?,
+                       executed_at = CURRENT_TIMESTAMP
+                   WHERE id = ? AND status = 'open'""",
+                (quantity, order_id)
             )
+
+            # If no row was updated, the order has already been processed
+            # by another worker/instance. Do not touch balances again.
+            if cursor.rowcount == 0:
+                await db.rollback()
+                logger.info(f"Skipping already-processed order {order_id} ({token_id})")
+                return
 
             # Release the full reservation and deduct only what was actually spent.
             # For buys: if execution_price < limit price the difference is returned to available.
             surplus = reserved_amount - actual_spent  # > 0 on buy price improvement; 0 for sells
-            await db.execute(
+            balance_cursor = await db.execute(
                 """UPDATE balances
                    SET reserved  = reserved  - ?,
                        total     = total     - ?,
                        available = available + ?,
                        updated_at = CURRENT_TIMESTAMP
-                   WHERE user_id = ? AND asset = ?""",
-                (reserved_amount, actual_spent, surplus, user_id, spent_asset)
+                   WHERE user_id = ? AND asset = ?
+                     AND reserved >= ?
+                     AND total >= ?""",
+                (reserved_amount, actual_spent, surplus, user_id, spent_asset, reserved_amount, actual_spent)
             )
+
+            if balance_cursor.rowcount == 0:
+                await db.rollback()
+                raise ValueError(
+                    f"Inconsistent {spent_asset} balance while executing order {token_id}"
+                )
             
             cursor = await db.execute(
                 "SELECT id FROM balances WHERE user_id = ? AND asset = ?",

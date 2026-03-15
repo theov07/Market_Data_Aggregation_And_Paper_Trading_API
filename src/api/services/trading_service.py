@@ -234,14 +234,18 @@ class TradingService:
                     # Deduct funds directly (no reservation for immediate orders)
                     if order_req.side == 'buy':
                         # Deduct USDT, add base asset
-                        await db.execute(
+                        debit_cursor = await db.execute(
                             """UPDATE balances 
                                SET available = available - ?,
                                    total = total - ?,
                                    updated_at = CURRENT_TIMESTAMP
-                               WHERE user_id = ? AND asset = ?""",
-                            (required_amount, required_amount, user.id, 'USDT')
+                               WHERE user_id = ? AND asset = ?
+                                 AND available >= ?
+                                 AND total >= ?""",
+                            (required_amount, required_amount, user.id, 'USDT', required_amount, required_amount)
                         )
+                        if debit_cursor.rowcount == 0:
+                            raise ValueError("Insufficient USDT balance during execution")
                         
                         # Add base asset
                         base_asset = order_req.symbol.replace('USDT', '')
@@ -267,14 +271,18 @@ class TradingService:
                     else:  # sell
                         # Deduct base asset, add USDT
                         base_asset = order_req.symbol.replace('USDT', '')
-                        await db.execute(
+                        debit_cursor = await db.execute(
                             """UPDATE balances 
                                SET available = available - ?,
                                    total = total - ?,
                                    updated_at = CURRENT_TIMESTAMP
-                               WHERE user_id = ? AND asset = ?""",
-                            (filled_quantity, filled_quantity, user.id, base_asset)
+                               WHERE user_id = ? AND asset = ?
+                                 AND available >= ?
+                                 AND total >= ?""",
+                            (filled_quantity, filled_quantity, user.id, base_asset, filled_quantity, filled_quantity)
                         )
+                        if debit_cursor.rowcount == 0:
+                            raise ValueError(f"Insufficient {base_asset} balance during execution")
                         
                         # Add USDT
                         cursor = await db.execute(
@@ -318,14 +326,19 @@ class TradingService:
                     )
                 else:
                     # Limit order: reserve funds
-                    await db.execute(
+                    reserve_cursor = await db.execute(
                         """UPDATE balances 
                            SET available = available - ?,
                                reserved = reserved + ?,
                                updated_at = CURRENT_TIMESTAMP
-                           WHERE user_id = ? AND asset = ?""",
-                        (required_amount, required_amount, user.id, required_asset)
+                           WHERE user_id = ? AND asset = ?
+                             AND available >= ?""",
+                        (required_amount, required_amount, user.id, required_asset, required_amount)
                     )
+                    if reserve_cursor.rowcount == 0:
+                        raise ValueError(
+                            f"Insufficient {required_asset} balance for reservation"
+                        )
                     
                     # Create order as 'open'
                     cursor = await db.execute(
@@ -409,21 +422,31 @@ class TradingService:
                     reserved_asset = symbol.replace('USDT', '')
                     reserved_amount = quantity
                 
-                await db.execute(
+                cancel_cursor = await db.execute(
+                    """UPDATE orders 
+                       SET status = 'cancelled'
+                       WHERE id = ? AND status = 'open'""",
+                    (order_id,)
+                )
+
+                if cancel_cursor.rowcount == 0:
+                    raise ValueError("Order is no longer open and cannot be cancelled")
+
+                release_cursor = await db.execute(
                     """UPDATE balances 
                        SET available = available + ?,
                            reserved = reserved - ?,
                            updated_at = CURRENT_TIMESTAMP
-                       WHERE user_id = ? AND asset = ?""",
-                    (reserved_amount, reserved_amount, user.id, reserved_asset)
+                       WHERE user_id = ? AND asset = ?
+                         AND reserved >= ?""",
+                    (reserved_amount, reserved_amount, user.id, reserved_asset, reserved_amount)
                 )
-                
-                await db.execute(
-                    """UPDATE orders 
-                       SET status = 'cancelled'
-                       WHERE id = ?""",
-                    (order_id,)
-                )
+
+                if release_cursor.rowcount == 0:
+                    await db.rollback()
+                    raise ValueError(
+                        f"Inconsistent reserved {reserved_asset} balance during cancellation"
+                    )
                 
                 await db.commit()
                 
@@ -493,23 +516,47 @@ class TradingService:
                             f"Additional required: {reserved_delta:.8f}, Available: {available:.8f}"
                         )
                 
-                # Update balance reservations
-                await db.execute(
-                    """UPDATE balances 
-                       SET available = available - ?,
-                           reserved = reserved + ?,
-                           updated_at = CURRENT_TIMESTAMP
-                       WHERE user_id = ? AND asset = ?""",
-                    (reserved_delta, reserved_delta, user.id, reserved_asset)
-                )
-                
-                # Update order
-                await db.execute(
+                # Update order only if still open (prevents races with execution engine)
+                order_cursor = await db.execute(
                     """UPDATE orders 
                        SET price = ?, quantity = ?
-                       WHERE id = ?""",
+                       WHERE id = ? AND status = 'open'""",
                     (new_price, new_quantity, order_id)
                 )
+
+                if order_cursor.rowcount == 0:
+                    raise ValueError("Order is no longer open and cannot be modified")
+
+                # Update balance reservations safely
+                if reserved_delta > 0:
+                    balance_cursor = await db.execute(
+                        """UPDATE balances 
+                           SET available = available - ?,
+                               reserved = reserved + ?,
+                               updated_at = CURRENT_TIMESTAMP
+                           WHERE user_id = ? AND asset = ?
+                             AND available >= ?""",
+                        (reserved_delta, reserved_delta, user.id, reserved_asset, reserved_delta)
+                    )
+                elif reserved_delta < 0:
+                    release_amount = -reserved_delta
+                    balance_cursor = await db.execute(
+                        """UPDATE balances 
+                           SET available = available - ?,
+                               reserved = reserved + ?,
+                               updated_at = CURRENT_TIMESTAMP
+                           WHERE user_id = ? AND asset = ?
+                             AND reserved >= ?""",
+                        (reserved_delta, reserved_delta, user.id, reserved_asset, release_amount)
+                    )
+                else:
+                    balance_cursor = None
+
+                if balance_cursor is not None and balance_cursor.rowcount == 0:
+                    await db.rollback()
+                    raise ValueError(
+                        f"Inconsistent {reserved_asset} reservation during order modification"
+                    )
                 
                 await db.commit()
                 

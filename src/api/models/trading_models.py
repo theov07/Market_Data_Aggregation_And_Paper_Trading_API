@@ -21,8 +21,8 @@ class OrderCreate(BaseModel):
     symbol: str
     side: str
     order_type: str = "limit"
-    price: Optional[float] = None
-    quantity: float
+    price: Optional[float] = Field(None, gt=0)
+    quantity: float = Field(..., gt=0)
     
     @field_validator('symbol')
     @classmethod
@@ -99,8 +99,8 @@ class DepositResponse(BaseModel):
 
 
 class OrderUpdate(BaseModel):
-    price: Optional[float] = None
-    quantity: Optional[float] = None
+    price: Optional[float] = Field(None, gt=0)
+    quantity: Optional[float] = Field(None, gt=0)
     
     @field_validator('price', 'quantity')
     @classmethod
