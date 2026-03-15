@@ -63,7 +63,7 @@ export OKX_WS_URL="wss://ws.okx.com:8443/ws/v5/public"        # OKX
 ### Launch Server
 
 ```bash
-python run_server.py
+SECRET_KEY=$(openssl rand -hex 32) python run_server.py
 ```
 
 Server starts at `http://localhost:8000`
