@@ -250,6 +250,7 @@ class OrderExecutionEngine:
                     "side": side,
                     "price": price,
                     "quantity": quantity,
+                    "filled_quantity": quantity,
                     "status": "filled",
                     "execution_price": execution_price
                 }
