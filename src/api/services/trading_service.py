@@ -77,7 +77,7 @@ class TradingService:
             """)
             
             await db.commit()
-            print("✅ Trading database tables initialized")
+            print("Trading database tables initialized")
     
     async def deposit(self, user: User, deposit_req: DepositRequest) -> DepositResponse:
         """Deposit"""
