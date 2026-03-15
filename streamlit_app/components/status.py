@@ -13,7 +13,7 @@ def auth_required(is_authenticated: bool):
 
 
 def backend_offline_banner(error: str | None = None):
-    msg = error or "Backend is offline — start the server with `python run_server.py`."
+    msg = error or "Backend is offline — start the server with `SECRET_KEY=$(openssl rand -hex 32) python run_server.py`."
     st.error(msg)
 
 

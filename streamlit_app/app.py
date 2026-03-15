@@ -35,7 +35,7 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
     if not backend_ok:
-        st.caption("Start: `python run_server.py`")
+        st.caption("Start: `SECRET_KEY=$(openssl rand -hex 32) python run_server.py`")
 
     username = st.session_state.get("username")
     if username:
@@ -66,7 +66,7 @@ with col1:
     st.markdown("""
 1. **Start the backend**
    ```bash
-   python run_server.py
+   SECRET_KEY=$(openssl rand -hex 32) python run_server.py
    ```
 2. **Register or login** — Overview page
 3. **Connect to WebSocket & subscribe** — Overview page
