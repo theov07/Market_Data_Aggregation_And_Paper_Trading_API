@@ -70,6 +70,24 @@ Server starts at `http://localhost:8000`
 
 **API Documentation:** `http://localhost:8000/docs` (Swagger UI)
 
+### Launch Streamlit Dashboard
+
+```bash
+streamlit run streamlit_app/app.py
+```
+
+Dashboard runs at `http://localhost:8501`
+
+**Streamlit Cloud:** [Add deploy link here]()
+
+| Page | Purpose |
+|---|---|
+| Overview | Login, WebSocket connect & subscribe, diagnostics |
+| Market Data | Live prices, trades, klines, EWMA |
+| Order Book | Best bid/ask per exchange |
+| Orders | Place & manage orders |
+| Portfolio | Balances & deposit |
+
 ### Run Demo Client
 
 Execute the interactive notebook:
@@ -235,6 +253,18 @@ Market_Data_Aggregation_And_Paper_Trading_API/
 ├── requirements.txt           # Python dependencies
 ├── view_users.py              # Database inspection utility
 ├── users.db                   # SQLite database (auto-created)
+│
+├── streamlit_app/             # Streamlit dashboard
+│   ├── app.py                 # Entry point (landing page)
+│   ├── pages/                 # One file per page
+│   │   ├── 1_Overview.py      # Login, WebSocket, diagnostics
+│   │   ├── 2_Market_Data.py   # Live market data
+│   │   ├── 3_Order_Book.py    # Best bid/ask
+│   │   ├── 4_Orders.py        # Order management
+│   │   └── 5_Portfolio.py     # Balances & deposit
+│   ├── services/              # API client & WS client & data adapter
+│   ├── components/            # Reusable UI components
+│   └── utils/                 # Theme, state, config helpers
 │
 ├── src/
 │   ├── exchanges/             # Exchange WebSocket connectors

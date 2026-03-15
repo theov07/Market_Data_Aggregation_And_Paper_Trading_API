@@ -38,7 +38,8 @@ class ClientSubscription:
     
     def matches(self, data_type: str, symbol: str, exchange: str, interval: str | None = None) -> bool:
         """
-        Check if subscription matches given criteria
+        Check if subscription matches given criteria.
+        "all" on the subscription side means any exchange is accepted.
         """
         if self.data_type != data_type:
             return False

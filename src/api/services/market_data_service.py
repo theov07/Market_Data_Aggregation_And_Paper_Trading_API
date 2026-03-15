@@ -213,10 +213,15 @@ class MarketDataService:
         # Update best touch aggregator
         self.best_touch_aggregator.update_orderbook(symbol, bid_level, ask_level)
         
-        # Get and broadcast best touch
+        # Broadcast cross-exchange (all) aggregated best touch
         best_touch = self.best_touch_aggregator.get_best_touch(symbol, exchange_filter="all")
         if best_touch:
-            await self._broadcast_best_touch(best_touch)
+            await self._broadcast_best_touch(best_touch, "all")
+        # Broadcast per-exchange best touch for subscribers who chose a specific exchange
+        for exc in ("binance", "okx"):
+            bt_exc = self.best_touch_aggregator.get_best_touch(symbol, exchange_filter=exc)
+            if bt_exc:
+                await self._broadcast_best_touch(bt_exc, exc)
     
     def _get_or_create_ewma_processor(self, symbol: str, exchange: str, half_life: float) -> EWMAProcessor:
         """
@@ -259,6 +264,7 @@ class MarketDataService:
             "exchange": trade.exchange,
             "price": trade.price,
             "quantity": trade.quantity,
+            "side": trade.side,
             "timestamp": trade.timestamp.timestamp() if hasattr(trade.timestamp, 'timestamp') else trade.timestamp
         }
         await self.ws_manager.broadcast("trade", trade.symbol, trade.exchange, data)
@@ -294,14 +300,16 @@ class MarketDataService:
         }
         await self.ws_manager.broadcast_ewma("ewma", ewma.symbol, ewma.exchange, half_life, data)
     
-    async def _broadcast_best_touch(self, best_touch: BestTouch):
+    async def _broadcast_best_touch(self, best_touch: BestTouch, exchange_scope: str):
         """
-        Broadcast best touch to subscribed clients
+        Broadcast best touch to subscribed clients.
+        exchange_scope: "all" for cross-exchange aggregation, or a specific exchange name.
         """
         price_precision, _ = self.price_formatter.get_precision(best_touch.symbol)
         
         data = {
             "symbol": best_touch.symbol,
+            "exchange": exchange_scope,
             "bid_price": round(best_touch.best_bid_price, price_precision),
             "bid_exchange": best_touch.best_bid_exchange,
             "ask_price": round(best_touch.best_ask_price, price_precision),
@@ -310,7 +318,7 @@ class MarketDataService:
             "timestamp": best_touch.timestamp.timestamp() if hasattr(best_touch.timestamp, 'timestamp') else best_touch.timestamp
         }
         
-        await self.ws_manager.broadcast("best_touch", best_touch.symbol, "all", data)
+        await self.ws_manager.broadcast("best_touch", best_touch.symbol, exchange_scope, data)
     
     def get_available_symbols(self) -> list[str]:
         """
