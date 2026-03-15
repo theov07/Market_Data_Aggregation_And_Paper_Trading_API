@@ -35,6 +35,4 @@ dist/
 build/
 
 .env
-.tmp/*
-.tmp/ws_verify_8015/server.pid
-.tmp/ws_verify_8015
+.tmp/
