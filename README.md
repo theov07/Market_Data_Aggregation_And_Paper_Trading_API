@@ -42,11 +42,11 @@ pip install -r requirements.txt
 Before running the server, you **must** set the `SECRET_KEY` environment variable:
 
 ```bash
-# Generate a secure secret key
+# Linux/macOS
 export SECRET_KEY=$(openssl rand -hex 32)
 
-# Or set manually (minimum 32 characters recommended)
-export SECRET_KEY="your-secure-secret-key-min-32-chars"
+# Windows PowerShell
+$env:SECRET_KEY = "your-secure-secret-key-min-32-chars"
 ```
 
 **Optional environment variables:**
@@ -63,7 +63,11 @@ export OKX_WS_URL="wss://ws.okx.com:8443/ws/v5/public"        # OKX
 ### Launch Server
 
 ```bash
+# Linux/macOS
 SECRET_KEY=$(openssl rand -hex 32) python run_server.py
+
+# Windows PowerShell
+$env:SECRET_KEY = "your-secure-secret-key-min-32-chars"; python run_server.py
 ```
 
 Server starts at `http://localhost:8000`

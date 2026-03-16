@@ -19,7 +19,9 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError(
         "SECRET_KEY environment variable must be set. "
-        "Generate one with: openssl rand -hex 32"
+        "Set it in .env or in terminal. "
+        "PowerShell: $env:SECRET_KEY = \"your-secure-secret-key-min-32-chars\"; python run_server.py | "
+        "bash: SECRET_KEY=$(openssl rand -hex 32) python run_server.py"
     )
 
 ALGORITHM = "HS256"

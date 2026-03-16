@@ -91,7 +91,12 @@ c3.markdown(
 )
 
 if not backend_ok:
-    st.error("Backend is offline. Start it with: `SECRET_KEY=$(openssl rand -hex 32) python run_server.py`")
+    start_cmd = (
+        '$env:SECRET_KEY = "your-secure-secret-key-min-32-chars"; python run_server.py'
+        if os.name == "nt"
+        else "SECRET_KEY=$(openssl rand -hex 32) python run_server.py"
+    )
+    st.error(f"Backend is offline. Start it with: `{start_cmd}`")
     st.stop()
 
 st.divider()

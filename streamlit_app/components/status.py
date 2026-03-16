@@ -1,6 +1,7 @@
 """
 Reusable status / alert widgets.
 """
+import os
 import json
 import streamlit as st
 
@@ -13,7 +14,12 @@ def auth_required(is_authenticated: bool):
 
 
 def backend_offline_banner(error: str | None = None):
-    msg = error or "Backend is offline — start the server with `SECRET_KEY=$(openssl rand -hex 32) python run_server.py`."
+    start_cmd = (
+        '$env:SECRET_KEY = "your-secure-secret-key-min-32-chars"; python run_server.py'
+        if os.name == "nt"
+        else "SECRET_KEY=$(openssl rand -hex 32) python run_server.py"
+    )
+    msg = error or f"Backend is offline — start the server with `{start_cmd}`."
     st.error(msg)
 
 
