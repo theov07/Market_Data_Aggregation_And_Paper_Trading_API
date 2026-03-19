@@ -54,6 +54,47 @@ def _get_secret_key() -> str:
     return key
 
 
+# ── Port helpers ───────────────────────────────────────────────────────────────
+
+def _pids_on_port(port: int) -> list[int]:
+    """Return all PIDs listening on *port* (macOS/Linux, uses lsof)."""
+    try:
+        out = subprocess.check_output(
+            ["lsof", "-ti", f"tcp:{port}"],
+            stderr=subprocess.DEVNULL,
+        ).decode()
+        return [int(p) for p in out.split() if p.strip().isdigit()]
+    except subprocess.CalledProcessError:
+        return []  # lsof exits 1 when nothing is found
+
+
+def _free_port(port: int) -> None:
+    """Kill every process currently bound to *port*, then wait until it's free."""
+    pids = _pids_on_port(port)
+    for pid in pids:
+        try:
+            # Try graceful first, then SIGKILL
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+
+    if pids:
+        time.sleep(0.8)  # give them a moment to exit cleanly
+
+    # If any are still alive, force-kill
+    for pid in _pids_on_port(port):
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+    # Wait until the port is actually free (up to 3 s)
+    for _ in range(30):
+        if not _pids_on_port(port):
+            break
+        time.sleep(0.1)
+
+
 # ── Process control ────────────────────────────────────────────────────────────
 
 def is_running() -> bool:
@@ -74,6 +115,13 @@ def start_server(wait_seconds: float = 3.0) -> tuple[bool, str]:
     with _lock:
         if is_running():
             return True, "Server already running"
+
+        # Kill anything already bound to the API port before we start
+        try:
+            from config import API_PORT as _port
+        except Exception:
+            _port = 8000
+        _free_port(_port)
 
         secret_key = _get_secret_key()
         env = os.environ.copy()
