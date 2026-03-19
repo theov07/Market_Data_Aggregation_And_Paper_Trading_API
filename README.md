@@ -4,6 +4,8 @@
 
 *Academic project - Paris Dauphine University - Master 2 in Financial Engineering - Major in Quantitative Finance*
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://market-data-aggregation-and-paper-trading-api.streamlit.app/)
+
 ---
 
 ## Overview
