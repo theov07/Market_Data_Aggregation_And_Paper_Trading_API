@@ -78,7 +78,9 @@ streamlit run streamlit_app/app.py
 
 Dashboard runs at `http://localhost:8501`
 
-**Streamlit Cloud:** [Add deploy link here]()
+**Streamlit Cloud:** [![Open App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://market-data-aggregation-and-paper-trading-api.streamlit.app/)
+
+> The cloud version starts the FastAPI backend automatically — no local setup required. Just open the app, register an account, and start trading.
 
 | Page | Purpose |
 |---|---|
