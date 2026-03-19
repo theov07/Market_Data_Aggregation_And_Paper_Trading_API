@@ -7,6 +7,7 @@ all Streamlit sessions in the same Python process.
 """
 
 import os
+import re
 import signal
 import sys
 import secrets
@@ -57,7 +58,8 @@ def _get_secret_key() -> str:
 # ── Port helpers ───────────────────────────────────────────────────────────────
 
 def _pids_on_port(port: int) -> list[int]:
-    """Return all PIDs listening on *port* (macOS/Linux, uses lsof)."""
+    """Return all PIDs listening on *port* (macOS/Linux)."""
+    # Try lsof first (macOS and some Linux distros)
     try:
         out = subprocess.check_output(
             ["lsof", "-ti", f"tcp:{port}"],
@@ -65,7 +67,19 @@ def _pids_on_port(port: int) -> list[int]:
         ).decode()
         return [int(p) for p in out.split() if p.strip().isdigit()]
     except subprocess.CalledProcessError:
-        return []  # lsof exits 1 when nothing is found
+        return []  # lsof exits 1 when nothing is listening
+    except FileNotFoundError:
+        pass  # lsof not installed; fall through to ss
+
+    # Fallback: ss (available on Linux)
+    try:
+        out = subprocess.check_output(
+            ["ss", "-Htlnp", f"sport = :{port}"],
+            stderr=subprocess.DEVNULL,
+        ).decode()
+        return [int(m) for m in re.findall(r"pid=(\d+)", out)]
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return []
 
 
 def _free_port(port: int) -> None:
