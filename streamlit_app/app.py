@@ -13,10 +13,17 @@ from utils.theme import inject_css, page_setup
 from utils.state import init
 from services.api_client import health_check, get_info
 from services.data_adapter import MarketDataStore
+from services.server_manager import is_running, start_server
 
 page_setup("Paper Trading Dashboard")
 inject_css()
 init()
+
+# ── Auto-start backend if not already running ──────────────────────────────────
+if "server_autostart_done" not in st.session_state:
+    st.session_state["server_autostart_done"] = True
+    if not is_running():
+        start_server()  # fire-and-forget; result visible via health_check()
 
 # Shared market data store — one instance for all pages
 if "market_store" not in st.session_state:

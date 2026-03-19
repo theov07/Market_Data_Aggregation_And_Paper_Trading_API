@@ -8,6 +8,7 @@ from utils.state import init, is_authenticated, set_auth, clear_auth, apply_ws_o
 from utils.config import SYMBOLS, EXCHANGES, DATA_TYPES, KLINE_INTERVALS
 from services.api_client import health_check, get_info, login, register, get_balance
 from services.ws_client import get_client, reset_client
+from services.server_manager import is_running, start_server, stop_server
 from components.status import ws_message_log
 
 page_setup("Home")
@@ -21,8 +22,33 @@ store = st.session_state["market_store"]
 
 client = get_client()
 
-# ── Sidebar: WS connection ─────────────────────────────────────────────────────
+# ── Sidebar: Backend server ────────────────────────────────────────────────────
 with st.sidebar:
+    st.markdown("### Backend Server")
+    srv_running = is_running()
+    srv_color = "#22c55e" if srv_running else "#ef4444"
+    srv_label = "Running" if srv_running else "Stopped"
+    st.markdown(f'<span style="color:{srv_color};font-weight:600">{srv_label}</span>', unsafe_allow_html=True)
+    col_srv1, col_srv2 = st.columns(2)
+    with col_srv1:
+        if st.button("Start", width="stretch", disabled=srv_running):
+            with st.spinner("Starting…"):
+                ok, msg = start_server()
+            if ok:
+                st.success(msg)
+            else:
+                st.error(msg)
+            st.rerun()
+    with col_srv2:
+        if st.button("Stop", width="stretch", disabled=not srv_running):
+            ok, msg = stop_server()
+            if ok:
+                st.info(msg)
+            else:
+                st.error(msg)
+            st.rerun()
+
+    st.markdown("---")
     st.markdown("### WebSocket")
     token = st.session_state.get("token") if is_authenticated() else None
     col_a, col_b = st.columns(2)

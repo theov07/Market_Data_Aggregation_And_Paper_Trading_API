@@ -35,4 +35,5 @@ dist/
 build/
 
 .env
+.secret_key
 .tmp/
