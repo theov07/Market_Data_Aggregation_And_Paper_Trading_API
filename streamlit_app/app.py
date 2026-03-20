@@ -13,7 +13,7 @@ from utils.theme import inject_css, page_setup
 from utils.state import init
 from services.api_client import health_check, get_info
 from services.data_adapter import MarketDataStore
-from services.server_manager import is_running, start_server
+from services.server_manager import is_running, start_server, AUTO_STOP_SECONDS
 
 page_setup("Paper Trading Dashboard")
 inject_css()
@@ -43,6 +43,8 @@ with st.sidebar:
     )
     if not backend_ok:
         st.caption("Start: `SECRET_KEY=$(openssl rand -hex 32) python run_server.py`")
+    else:
+        st.caption(f"⏱ Auto-stops after {AUTO_STOP_SECONDS // 60} min")
 
     username = st.session_state.get("username")
     if username:

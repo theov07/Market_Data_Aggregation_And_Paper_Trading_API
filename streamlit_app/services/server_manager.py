@@ -27,6 +27,9 @@ _PYTHON = sys.executable
 # ── Module-level state (shared across all sessions) ────────────────────────────
 _process: "subprocess.Popen | None" = None
 _lock = threading.Lock()
+_auto_stop_timer: "threading.Timer | None" = None
+
+AUTO_STOP_SECONDS = 10 * 60  # 10 minutes
 
 
 # ── Secret key ─────────────────────────────────────────────────────────────────
@@ -124,11 +127,17 @@ def start_server(wait_seconds: float = 3.0) -> tuple[bool, str]:
     """
     Start the FastAPI backend.
     Returns (success: bool, message: str).
+    After AUTO_STOP_SECONDS the server is stopped automatically.
     """
-    global _process
+    global _process, _auto_stop_timer
     with _lock:
         if is_running():
             return True, "Server already running"
+
+        # Cancel any pending auto-stop from a previous run
+        if _auto_stop_timer is not None:
+            _auto_stop_timer.cancel()
+            _auto_stop_timer = None
 
         # Kill anything already bound to the API port before we start
         try:
@@ -162,13 +171,22 @@ def start_server(wait_seconds: float = 3.0) -> tuple[bool, str]:
                 err = ""
             return False, f"Server exited (code {_process.returncode}). {err}"
 
+        # Schedule automatic shutdown after AUTO_STOP_SECONDS
+        _auto_stop_timer = threading.Timer(AUTO_STOP_SECONDS, stop_server)
+        _auto_stop_timer.daemon = True
+        _auto_stop_timer.start()
+
         return True, f"Server started (PID {_process.pid})"
 
 
 def stop_server() -> tuple[bool, str]:
     """Terminate the backend process gracefully."""
-    global _process
+    global _process, _auto_stop_timer
     with _lock:
+        # Cancel pending auto-stop timer if called manually
+        if _auto_stop_timer is not None:
+            _auto_stop_timer.cancel()
+            _auto_stop_timer = None
         if not is_running():
             _process = None
             return True, "Server not running"
